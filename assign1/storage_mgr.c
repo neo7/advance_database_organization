@@ -74,13 +74,31 @@ destroyPageFile (char *fileName)
 RC
 readBlock (int pageNum, SM_FileHandle *fHandle, SM_PageHandle memPage)
 {
-return RC_OK;
+  FILE *fstream = fHandle->mgmtInfo;
+  if (fstream == NULL)
+  {
+    return RC_FILE_NOT_FOUND;
+  }
+  if (fHandle->totalNumPages < pageNum)
+  {
+    return RC_READ_NON_EXISTING_PAGE;
+  }
+  size_t block_file_size = fread(memPage, PAGE_SIZE, 1, fstream);
+  if(block_file_size == 0)
+  {
+    return RC_BLOCK_READ_ERROR;
+  }
+  fHandle->curPagePos = pageNum;
+  return RC_OK;
 }
 
 int
 getBlockPos (SM_FileHandle *fHandle)
 {
-return RC_OK;
+  if (fHandle == NULL){
+    return RC_FILE_HANDLE_NOT_INIT;
+  }
+  return fHandle->curPagePos;
 }
 
 RC
