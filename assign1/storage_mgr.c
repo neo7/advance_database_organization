@@ -83,6 +83,9 @@ readBlock (int pageNum, SM_FileHandle *fHandle, SM_PageHandle memPage)
   {
     return RC_READ_NON_EXISTING_PAGE;
   }
+  int offset = (pageNum) * PAGE_SIZE;
+  //set offset to non-existing to read the next block
+  fseek(fstream, offset, SEEK_SET);
   size_t block_file_size = fread(memPage, PAGE_SIZE, 1, fstream);
   if(block_file_size == 0)
   {
@@ -104,19 +107,64 @@ getBlockPos (SM_FileHandle *fHandle)
 RC
 readFirstBlock (SM_FileHandle *fHandle, SM_PageHandle memPage)
 {
-return RC_OK;
+  FILE *fstream = fHandle->mgmtInfo;
+  if (fstream == NULL)
+  {
+    return RC_FILE_NOT_FOUND;
+  }
+  fseek(fstream, 0, SEEK_SET);
+  size_t block_file_size = fread(memPage, PAGE_SIZE, 1, fstream);
+  if(block_file_size == 0)
+  {
+    return RC_BLOCK_READ_ERROR;
+  }
+  return RC_OK;
 }
 
 RC
 readPreviousBlock (SM_FileHandle *fHandle, SM_PageHandle memPage)
 {
-return RC_OK;
+  FILE *fstream = fHandle->mgmtInfo;
+  if (fstream == NULL)
+  {
+    return RC_FILE_NOT_FOUND;
+  }
+  if (fHandle->curPagePos == 0)
+  {
+    return RC_PREV_BLOCK_NOT_EXIST;
+  }
+  int offset = (fHandle->curPagePos - 1) * PAGE_SIZE;
+  //set offset to start of the previous block.
+  fseek(fstream, offset, SEEK_SET);
+  size_t block_file_size = fread(memPage, PAGE_SIZE, 1, fstream);
+  if(block_file_size == 0)
+  {
+    return RC_BLOCK_READ_ERROR;
+  }
+  return RC_OK;
 }
 
 RC
 readCurrentBlock (SM_FileHandle *fHandle, SM_PageHandle memPage)
 {
-return RC_OK;
+  FILE *fstream = fHandle->mgmtInfo;
+  if (fstream == NULL)
+  {
+    return RC_FILE_NOT_FOUND;
+  }
+  if (fHandle->curPagePos == 0)
+  {
+    return RC_PREV_BLOCK_NOT_EXIST;
+  }
+  int offset = (fHandle->curPagePos) * PAGE_SIZE;
+  //set offset to start of the previous block.
+  fseek(fstream, offset, SEEK_SET);
+  size_t block_file_size = fread(memPage, PAGE_SIZE, 1, fstream);
+  if(block_file_size == 0)
+  {
+    return RC_BLOCK_READ_ERROR;
+  }
+  return RC_OK;
 }
 
 RC
@@ -128,7 +176,19 @@ return RC_OK;
 RC
 readLastBlock (SM_FileHandle *fHandle, SM_PageHandle memPage)
 {
-return RC_OK;
+  FILE *fstream = fHandle->mgmtInfo;
+  if (fstream == NULL)
+  {
+    return RC_FILE_NOT_FOUND;
+  }
+  //set offset to non-existing to read the next block
+  fseek(fstream, PAGE_SIZE, SEEK_END);
+  size_t block_file_size = fread(memPage, PAGE_SIZE, 1, fstream);
+  if(block_file_size == 0)
+  {
+    return RC_BLOCK_READ_ERROR;
+  }
+  return RC_OK;
 }
 
 /* writing blocks to a page file */
@@ -153,5 +213,13 @@ return RC_OK;
 RC
 ensureCapacity (int numberOfPages, SM_FileHandle *fHandle)
 {
-return RC_OK;
+  if (fHandle == NULL)
+  {
+    return RC_FILE_HANDLE_NOT_INIT;
+  }
+  int totalNumPages = fHandle->totalNumPages;
+  if (numberOfPages > totalNumPages){
+    fHandle->totalNumPages = numberOfPages;
+  }
+  return RC_OK;
 }
