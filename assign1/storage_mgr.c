@@ -16,9 +16,10 @@ createPageFile (char *fileName)
   FILE *fstream;
   fstream = fopen(fileName, "w+" );
   char *filepointer = (char *) calloc(PAGE_SIZE, sizeof(char));
+  //char *filepointer = (char *) calloc(PAGE_SIZE, sizeof(char));
   size_t sizeOfFile = fwrite(filepointer, sizeof(char), PAGE_SIZE, fstream);
   fclose(fstream);
-  free(fstream);
+  //free(fstream);
   return RC_OK;
 }
 
