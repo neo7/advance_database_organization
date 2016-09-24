@@ -4,7 +4,7 @@
 #include "stdio.h"
 
 /* module wide constants */
-#define PAGE_SIZE 4096
+#define PAGE_SIZE 8
 
 /* return code definitions */
 typedef int RC;
@@ -18,6 +18,7 @@ typedef int RC;
 #define RC_BLOCK_READ_ERROR 6
 #define RC_CURR_PAGE_POS_NULL -1
 #define RC_PREV_BLOCK_NOT_EXIST 7
+#define RC_BLOCK_APPEND_ERROR 8
 
 #define RC_RM_COMPARE_VALUE_OF_DIFFERENT_DATATYPE 200
 #define RC_RM_EXPR_RESULT_IS_NOT_BOOLEAN 201
