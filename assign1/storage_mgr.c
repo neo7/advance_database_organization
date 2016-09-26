@@ -201,7 +201,7 @@ readLastBlock (SM_FileHandle *fHandle, SM_PageHandle memPage)
     return RC_FILE_NOT_FOUND;
   }
   //set offset to non-existing to read the next block
-  fseek(fstream, PAGE_SIZE, SEEK_END);
+  fseek(fstream, -PAGE_SIZE, SEEK_END);
   size_t block_file_size = fread(memPage, sizeof(char), PAGE_SIZE, fstream);
   if(block_file_size == 0)
   {
