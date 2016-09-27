@@ -1,14 +1,14 @@
-TEST_STORAGE_MGR=test_assign1
-TEST_STORAGE_MGR_EXTRA=test_assign2
+TEST_STORAGE_MGR=test_assign1_1
+TEST_STORAGE_MGR_EXTRA=test_assign1_2
 CC=gcc
 
 all: ${TEST_STORAGE_MGR} ${TEST_STORAGE_MGR_EXTRA}
 
 ${TEST_STORAGE_MGR}: dberror.o storage_mgr.o test_assign1_1.o
-	${CC} test_assign1_1.o storage_mgr.o dberror.o -g -Wall -lm -o test_assign1
+	${CC} test_assign1_1.o storage_mgr.o dberror.o -g -Wall -lm -o test_assign1_1
 
 ${TEST_STORAGE_MGR_EXTRA}: dberror.o storage_mgr.o test_assign1_2.o
-	${CC} test_assign1_2.o storage_mgr.o dberror.o -g -Wall -lm -o test_assign2	
+	${CC} test_assign1_2.o storage_mgr.o dberror.o -g -Wall -lm -o test_assign1_2
 
 dberror.o: dberror.c dberror.h
 	${CC} -c dberror.c -o dberror.o
@@ -24,5 +24,5 @@ test_assign1_2.o: test_assign1_2.c test_helper.h
 
 clean:
 	rm -f *.o
-	rm -f test_assign1
-	rm -f test_assign2
+	rm -f test_assign1_1
+	rm -f test_assign1_2

@@ -54,7 +54,7 @@ testAppendPageContent(void)
 // writing on second block
   TEST_CHECK(writeBlock(1,&fh,ph));
   printf("writing on second block\n");
- 
+
  // reading first block
  TEST_CHECK(readFirstBlock (&fh, ph));
   for (i=0; i < PAGE_SIZE; i++)
@@ -66,15 +66,15 @@ testAppendPageContent(void)
   for (i=0; i < PAGE_SIZE; i++)
     ASSERT_TRUE((ph[i] == (i % 10) + '0'), "expected value as second block is the last block");
   printf("reading last block\n");
-
      // appending last block
  TEST_CHECK(appendEmptyBlock (&fh));
   printf("appending empty block\n");
 
     // reading last block
  TEST_CHECK(readLastBlock (&fh, ph));
-  for (i=0; i < PAGE_SIZE; i++)
+  for (i=0; i < PAGE_SIZE; i++){
     ASSERT_TRUE((ph[i] == 0), "expected zero bytes as we appended empty block");
+  }
   printf("reading last block\n");
 
   // destroy new page file
