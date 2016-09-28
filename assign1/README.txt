@@ -156,4 +156,5 @@ following the analogy of the test file provided by the instructor.
 First we write on the second block and read the first block to check if its null.
 Then we read the last block which is the second block in our case to verify the block has been written properly.
 We append an empty block and read the last block to verify that our appended block was added to the file.
+We ensured capacity and checked if the capacity was increased.
 -----------------------------------------------------------------------------------------------------------------

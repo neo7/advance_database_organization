@@ -66,6 +66,7 @@ testAppendPageContent(void)
   for (i=0; i < PAGE_SIZE; i++)
     ASSERT_TRUE((ph[i] == (i % 10) + '0'), "expected value as second block is the last block");
   printf("reading last block\n");
+
      // appending last block
  TEST_CHECK(appendEmptyBlock (&fh));
   printf("appending empty block\n");
@@ -75,10 +76,18 @@ testAppendPageContent(void)
   for (i=0; i < PAGE_SIZE; i++){
     ASSERT_TRUE((ph[i] == 0), "expected zero bytes as we appended empty block");
   }
-  printf("reading last block\n");
+  
+  //increasing the block for capacity
+ TEST_CHECK(ensureCapacity (3, &fh));
+ printf("ensured capacity\n");
 
-  // destroy new page file
-  TEST_CHECK(destroyPageFile (TESTPF));
+//check if the capacity has increased
+  TEST_CHECK(readLastBlock (&fh, ph));
+  for (i=0; i < PAGE_SIZE; i++){
+    ASSERT_TRUE((ph[i] == 0), "expected zero bytes as we ensured capacity");
+  }
+  //destroy new page file*
+ TEST_CHECK(destroyPageFile (TESTPF));
 
   TEST_DONE();
 }
