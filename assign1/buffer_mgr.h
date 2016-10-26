@@ -3,6 +3,7 @@
 
 // Include return codes and methods for logging errors
 #include "dberror.h"
+#include "storage_mgr.h"
 
 // Include bool DT
 #include "dt.h"
@@ -24,14 +25,34 @@ typedef struct BM_BufferPool {
   char *pageFile;
   int numPages;
   ReplacementStrategy strategy;
-  void *mgmtData; // use this one to store the bookkeeping info your buffer 
-                  // manager needs for a buffer pool
+  void *mgmtData; // use this one to store the bookkeeping info your buffer
+  void *statData;                // manager needs for a buffer pool
 } BM_BufferPool;
 
 typedef struct BM_PageHandle {
   PageNumber pageNum;
   char *data;
 } BM_PageHandle;
+
+typedef struct Frame{
+	SM_PageHandle pagedata;
+	PageNumber pagenum;
+	int dirtybit;
+	int fixedcount;
+} Frame;
+
+typedef struct Stats{
+	int hitcount;
+	int readcount;
+	int writecount;
+
+} Stats;
+
+#define MAKE_STATS()				\
+  ((Stats *) malloc (sizeof(Stats)))
+
+Stats *stats;
+
 
 // convenience macros
 #define MAKE_POOL()					\
@@ -41,8 +62,8 @@ typedef struct BM_PageHandle {
   ((BM_PageHandle *) malloc (sizeof(BM_PageHandle)))
 
 // Buffer Manager Interface Pool Handling
-RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName, 
-		  const int numPages, ReplacementStrategy strategy, 
+RC initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
+		  const int numPages, ReplacementStrategy strategy,
 		  void *stratData);
 RC shutdownBufferPool(BM_BufferPool *const bm);
 RC forceFlushPool(BM_BufferPool *const bm);
@@ -51,7 +72,7 @@ RC forceFlushPool(BM_BufferPool *const bm);
 RC markDirty (BM_BufferPool *const bm, BM_PageHandle *const page);
 RC unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page);
 RC forcePage (BM_BufferPool *const bm, BM_PageHandle *const page);
-RC pinPage (BM_BufferPool *const bm, BM_PageHandle *const page, 
+RC pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 	    const PageNumber pageNum);
 
 // Statistics Interface
@@ -60,5 +81,6 @@ bool *getDirtyFlags (BM_BufferPool *const bm);
 int *getFixCounts (BM_BufferPool *const bm);
 int getNumReadIO (BM_BufferPool *const bm);
 int getNumWriteIO (BM_BufferPool *const bm);
+int writeBlockToPage(BM_BufferPool *const bm, Frame *frames, int frame_index);
 
 #endif
