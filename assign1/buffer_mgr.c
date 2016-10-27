@@ -58,6 +58,10 @@ shutdownBufferPool(BM_BufferPool *const bm)
 			isPageInBuffer = true;
 		}
 	}
+    if (	bm->mgmtData == NULL){
+        
+        return RC_BUFFER_NOTINITIALIZED;
+    }
 	if (isPageInBuffer)
 	{
 		return RC_PAGE_IN_BUFFER_ERROR;
@@ -69,6 +73,11 @@ shutdownBufferPool(BM_BufferPool *const bm)
 }
 RC
 forceFlushPool(BM_BufferPool *const bm){
+    if (	bm->mgmtData == NULL){
+        
+        return RC_BUFFER_NOTINITIALIZED;
+    }
+    
  Frame * frames = (Frame *) bm->mgmtData;
  Stats * stat = (Stats*) bm->statData;
  int i;
@@ -87,8 +96,11 @@ forceFlushPool(BM_BufferPool *const bm){
 RC
 markDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
 {
-	//already dirtybit
-	//mgmtData NULL
+    if (	bm->mgmtData == NULL){
+        
+        return RC_BUFFER_NOTINITIALIZED;
+    }
+    
 	Frame *frames = ((Frame *)(bm->mgmtData));
 	int i;
 	bool foundPageNum = false;
@@ -96,6 +108,10 @@ markDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
 	{
 		if (frames[i].pagenum == page->pageNum)
 		{
+            if (frames[i].dirtybit == DIRTY_FLAG) {
+                return RC_MARK_DIRTY_ERROR;
+            }
+            
 			frames[i].dirtybit = DIRTY_FLAG;
 			foundPageNum = true;
 			break;
@@ -112,6 +128,12 @@ markDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
 
 RC
 unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
+    
+    if (	bm->mgmtData == NULL){
+        
+        return RC_BUFFER_NOTINITIALIZED;
+    }
+    
 	Frame *frames = ((Frame *)(bm->mgmtData));
 	int i;
 	bool foundPageNum = false;
@@ -136,16 +158,30 @@ unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
 RC
 forcePage (BM_BufferPool *const bm, BM_PageHandle *const page)
 {
+    int check;
+    if (	bm->mgmtData == NULL){
+    
+    return RC_BUFFER_NOTINITIALIZED;
+    }
+    
+    if (page->pageNum == -1 || page->pageNum > bm->numPages) {
+        return RC_PAGE_ERROR;
+    }
+    
 	Frame * frames = (Frame *) bm->mgmtData;
 	int i;
 	for (i= 0; i<bm->numPages; i++)
 	{
 		if (frames[i].pagenum == page->pageNum)
 		{
-			writeBlockToPage(bm, frames, i);
+			check = writeBlockToPage(bm, frames, i);
 		}
 	}
-	return RC_OK;
+    if(check == 0){
+        return RC_OK;
+    }else{
+        return RC_FORCE_POOL_ERROR;
+    }
 }
 
 RC
@@ -154,7 +190,7 @@ pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 return 0;
       }
 
-// Statistics Interface
+
 PageNumber
 *getFrameContents (BM_BufferPool *const bm)
 {
@@ -171,6 +207,11 @@ PageNumber
 bool
 *getDirtyFlags (BM_BufferPool *const bm)
 {
+    if (	bm->mgmtData == NULL){
+        
+        return false;
+    }
+
 	bool * dirtyflagarray = malloc(sizeof(bool)*bm->numPages);
 	Frame * frames = (Frame *)bm->mgmtData;
 	int i;
@@ -189,6 +230,8 @@ bool
 
 int
 *getFixCounts (BM_BufferPool *const bm){
+    
+
 	int * fixedcountarray = malloc(sizeof(int)*bm->numPages);
 	Frame * frames = (Frame *)bm->mgmtData;
 	int i;
@@ -201,6 +244,12 @@ int
 
 int
 getNumReadIO (BM_BufferPool *const bm){
+    
+    if (	bm->mgmtData == NULL){
+        
+        return RC_BUFFER_NOTINITIALIZED;
+    }
+
  if (bm->statData != NULL)
  {
 	 Stats * stats = (Stats *) bm->statData;
@@ -214,6 +263,11 @@ getNumReadIO (BM_BufferPool *const bm){
 int
 getNumWriteIO (BM_BufferPool *const bm)
 {
+    if (	bm->mgmtData == NULL){
+        
+        return RC_BUFFER_NOTINITIALIZED;
+    }
+    
  if (bm->statData != NULL)
  {
 	 Stats * stats = (Stats *) bm->statData;
