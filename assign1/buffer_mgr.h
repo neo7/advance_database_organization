@@ -7,6 +7,7 @@
 
 // Include bool DT
 #include "dt.h"
+#define INT_MAX 32767
 
 // Replacement Strategies
 typedef enum ReplacementStrategy {
@@ -39,6 +40,7 @@ typedef struct Frame{
 	PageNumber pagenum;
 	int dirtybit;
 	int fixedcount;
+  int ranking;
 } Frame;
 
 typedef struct Stats{

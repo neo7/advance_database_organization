@@ -33,9 +33,29 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
 }
 
 void
-lru (BM_PageHandle *const page, Frame *frame)
+lru (BM_BufferPool *const bm, Frame *freshframe)
 {
+  Frame *frames = (Frame *)bm->mgmtData;
+  Stats *stat = (Stats *)bm->statData;
+  int i;
+  int eviction_index = 0;
+  int minimum_rank = INT_MAX;
+  //search for min rank.
+  for (i = 0; i<bm->numPages; i++)
+  {
+    if (frames[i].ranking < minimum_rank)
+    {
+      minimum_rank = frames[i].ranking;
+      eviction_index = i;
+    }
+  }
 
+  if(frames[eviction_index].dirtybit == 1)
+  {
+    writeBlockToPage(bm, &frames[eviction_index]);
+  }
+  copyNewFrameInOld(&frames[eviction_index], freshframe);
+  decreaseRankingForPages(bm, eviction_index);
 
 }
 
@@ -45,5 +65,21 @@ void copyNewFrameInOld(Frame *oldframe, Frame *freshframe)
   oldframe->pagenum = freshframe->pagenum;
   oldframe->dirtybit = freshframe->dirtybit;
   oldframe->fixedcount = freshframe->fixedcount;
+
+}
+
+//get index from pin page.
+void
+decreaseRankingForPages(BM_BufferPool *const bm, int frameindex)
+{
+  Frame *frames = (Frame *) bm->mgmtData;
+  int i;
+  for (i = 0; i<bm->numPages; i++)
+  {
+    if (i != frameindex || frames[i].pagenum != -1)
+    {
+      frames[i].ranking = frames[i].ranking - 1;
+    }
+  }
 
 }
