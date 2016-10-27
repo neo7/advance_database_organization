@@ -45,8 +45,12 @@ typedef struct Stats{
 	int hitcount;
 	int readcount;
 	int writecount;
+  int lastposition;
 
 } Stats;
+
+#define DIRTY_FLAG 1
+#define DIRTY_UNFLAG 0
 
 #define MAKE_STATS()				\
   ((Stats *) malloc (sizeof(Stats)))
@@ -81,6 +85,6 @@ bool *getDirtyFlags (BM_BufferPool *const bm);
 int *getFixCounts (BM_BufferPool *const bm);
 int getNumReadIO (BM_BufferPool *const bm);
 int getNumWriteIO (BM_BufferPool *const bm);
-int writeBlockToPage(BM_BufferPool *const bm, Frame *frames, int frame_index);
+int writeBlockToPage(BM_BufferPool *const bm, Frame *frame);
 
 #endif

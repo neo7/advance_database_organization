@@ -11,8 +11,8 @@ ${TEST_STORAGE_MGR}: dberror.o storage_mgr.o test_assign1_1.o
 ${TEST_STORAGE_MGR_EXTRA}: dberror.o storage_mgr.o test_assign1_2.o
 	${CC} test_assign1_2.o storage_mgr.o dberror.o -g -Wall -lm -o test_assign1_2
 
-${TEST_BUFFER_MGR}: dberror.o storage_mgr.o buffer_mgr_stat.o buffer_mgr.o test_assign2_1.o
-	${CC} test_assign2_1.o storage_mgr.o buffer_mgr_stat.o buffer_mgr.o dberror.o -g -Wall -lm -o test_assign2_1
+${TEST_BUFFER_MGR}: dberror.o storage_mgr.o buffer_mgr_stat.o buffer_mgr.o caching_mechanism.o test_assign2_1.o
+	${CC} test_assign2_1.o storage_mgr.o buffer_mgr_stat.o buffer_mgr.o dberror.o caching_mechanism.o -g -Wall -lm -o test_assign2_1
 
 
 dberror.o: dberror.c dberror.h
@@ -32,6 +32,9 @@ buffer_mgr_stat.o: buffer_mgr_stat.c buffer_mgr_stat.h
 
 buffer_mgr.o: buffer_mgr.c buffer_mgr.h
 	${CC} -c buffer_mgr.c -o buffer_mgr.o
+
+caching_mechanism.o: caching_mechanism.c caching_mechanism.h
+	${CC} -c caching_mechanism.c -o caching_mechanism.o
 
 test_assign2_1.o: test_assign2_1.c test_helper.h
 	${CC} -c test_assign2_1.c -o test_assign2_1.o

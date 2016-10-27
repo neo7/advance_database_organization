@@ -2,8 +2,7 @@
 #include "storage_mgr.h"
 #include <stdio.h>
 #include <stdlib.h>
-#define DIRTY_FLAG 1
-#define DIRTY_UNFLAG 0
+
 
 RC
 initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
@@ -33,11 +32,7 @@ initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 		pageCounter--;
 	}
 	bm->mgmtData = frames;
-	/*
-	int hitcount;
-	int readcount;
-	int writecount;
-	*/
+
 	stats->hitcount = 0;
 	stats->readcount = 0;
 	stats->writecount = 0;
@@ -59,7 +54,7 @@ shutdownBufferPool(BM_BufferPool *const bm)
 		}
 	}
     if (	bm->mgmtData == NULL){
-        
+
         return RC_BUFFER_NOTINITIALIZED;
     }
 	if (isPageInBuffer)
@@ -74,10 +69,10 @@ shutdownBufferPool(BM_BufferPool *const bm)
 RC
 forceFlushPool(BM_BufferPool *const bm){
     if (	bm->mgmtData == NULL){
-        
+
         return RC_BUFFER_NOTINITIALIZED;
     }
-    
+
  Frame * frames = (Frame *) bm->mgmtData;
  Stats * stat = (Stats*) bm->statData;
  int i;
@@ -85,7 +80,7 @@ forceFlushPool(BM_BufferPool *const bm){
  {
 	 if (frames[i].dirtybit == DIRTY_FLAG && frames[i].fixedcount == 0)
 	 {
-		 writeBlockToPage(bm, frames, i);
+		 writeBlockToPage(bm, &frames[i]);
 	 }
  }
  return RC_OK;
@@ -97,10 +92,10 @@ RC
 markDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
 {
     if (	bm->mgmtData == NULL){
-        
+
         return RC_BUFFER_NOTINITIALIZED;
     }
-    
+
 	Frame *frames = ((Frame *)(bm->mgmtData));
 	int i;
 	bool foundPageNum = false;
@@ -111,7 +106,7 @@ markDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
             if (frames[i].dirtybit == DIRTY_FLAG) {
                 return RC_MARK_DIRTY_ERROR;
             }
-            
+
 			frames[i].dirtybit = DIRTY_FLAG;
 			foundPageNum = true;
 			break;
@@ -128,12 +123,12 @@ markDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
 
 RC
 unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
-    
+
     if (	bm->mgmtData == NULL){
-        
+
         return RC_BUFFER_NOTINITIALIZED;
     }
-    
+
 	Frame *frames = ((Frame *)(bm->mgmtData));
 	int i;
 	bool foundPageNum = false;
@@ -160,21 +155,21 @@ forcePage (BM_BufferPool *const bm, BM_PageHandle *const page)
 {
     int check;
     if (	bm->mgmtData == NULL){
-    
+
     return RC_BUFFER_NOTINITIALIZED;
     }
-    
+
     if (page->pageNum == -1 || page->pageNum > bm->numPages) {
         return RC_PAGE_ERROR;
     }
-    
+
 	Frame * frames = (Frame *) bm->mgmtData;
 	int i;
 	for (i= 0; i<bm->numPages; i++)
 	{
 		if (frames[i].pagenum == page->pageNum)
 		{
-			check = writeBlockToPage(bm, frames, i);
+			check = writeBlockToPage(bm, &frames[i]);
 		}
 	}
     if(check == 0){
@@ -208,7 +203,7 @@ bool
 *getDirtyFlags (BM_BufferPool *const bm)
 {
     if (	bm->mgmtData == NULL){
-        
+
         return false;
     }
 
@@ -230,7 +225,7 @@ bool
 
 int
 *getFixCounts (BM_BufferPool *const bm){
-    
+
 
 	int * fixedcountarray = malloc(sizeof(int)*bm->numPages);
 	Frame * frames = (Frame *)bm->mgmtData;
@@ -244,9 +239,9 @@ int
 
 int
 getNumReadIO (BM_BufferPool *const bm){
-    
+
     if (	bm->mgmtData == NULL){
-        
+
         return RC_BUFFER_NOTINITIALIZED;
     }
 
@@ -264,10 +259,10 @@ int
 getNumWriteIO (BM_BufferPool *const bm)
 {
     if (	bm->mgmtData == NULL){
-        
+
         return RC_BUFFER_NOTINITIALIZED;
     }
-    
+
  if (bm->statData != NULL)
  {
 	 Stats * stats = (Stats *) bm->statData;
@@ -278,13 +273,13 @@ getNumWriteIO (BM_BufferPool *const bm)
  }
 }
 
-int writeBlockToPage(BM_BufferPool *const bm, Frame *frames, int frame_index)
+int writeBlockToPage(BM_BufferPool *const bm, Frame *frame)
 {
 	SM_FileHandle fh;
 	Stats * stats = (Stats *) bm->statData;
 	openPageFile(bm->pageFile, &fh);
-	writeBlock(frames[frame_index].pagenum, &fh, frames[frame_index].pagedata);
-	frames[frame_index].dirtybit = DIRTY_UNFLAG;
+	writeBlock(frame->pagenum, &fh, frame->pagedata);
+	frame->dirtybit = DIRTY_UNFLAG;
 	stats->writecount++;
 	bm->statData = stats;
 	return RC_OK;
