@@ -1,5 +1,4 @@
 #include "buffer_mgr.h"
-#include "storage_mgr.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "caching_mechanism.h"
@@ -15,7 +14,7 @@ initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 	{
 		return RC_FILE_NOT_FOUND;
 	}
-	stats = MAKE_STATS();
+	Stats *stats = MAKE_STATS();
 	bm->pageFile = (char *)pageFileName;
 	bm->numPages = numPages;
 	bm->strategy = strategy;
