@@ -119,7 +119,6 @@ unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
 
 	Frame *frames = ((Frame *)(bm->mgmtData));
 	int i;
-	bool foundPageNum = false;
 	for (i = 0; i<bm->numPages; i++)
 	{
 		if (frames[i].pagenum == page->pageNum)
@@ -128,6 +127,7 @@ unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
 			return RC_OK;
 		}
 	}
+	return RC_UNPIN_PAGE_ERROR;
 }
 
 RC

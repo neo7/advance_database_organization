@@ -6,7 +6,6 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
 {
     Frame *frames = (Frame *)bm->mgmtData;
     Stats *stat = (Stats *)bm->statData;
-    //printf("%d\n", stat->lastposition);
     int eviction_index = stat->lastposition%bm->numPages;
     stat->lastposition = stat->lastposition + 1;
     int i;
@@ -17,7 +16,6 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
           {
             writeBlockToPage(bm, &frames[eviction_index]);
           }
-          //copyNewFrameInOld(&frames[eviction_index], freshframe);
           frames[eviction_index].pagedata = freshframe->pagedata;
           frames[eviction_index].pagenum = freshframe->pagenum;
           frames[eviction_index].dirtybit = freshframe->dirtybit;
@@ -29,7 +27,6 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
       else
       {
         eviction_index = eviction_index + 1;
-        printf("%s\n", "evic");
         if(eviction_index%bm->numPages == 0)
         {
           eviction_index = 0;
@@ -76,21 +73,17 @@ lru (BM_BufferPool *const bm, Frame *freshframe)
 void
 decreaseRankingForPages(BM_BufferPool *const bm, int frameindex)
 {
-  printf("frameidx %d\n", frameindex);
   Frame *frames = (Frame *) bm->mgmtData;
   int i;
   for (i = 0; i<bm->numPages; i++)
   {
     if (i != frameindex || frames[i].pagenum != -1)
     {
-
       frames[i].ranking = frames[i].ranking - 1;
-      printf("ranking other frames %d\n", frames[i].ranking);
     }
     if (i == frameindex)
     {
       frames[i].ranking = INT_MAX;
-      printf("replaced frame rank %d\n", frames[i].ranking);
     }
   }
 
