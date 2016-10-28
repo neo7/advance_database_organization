@@ -53,6 +53,8 @@ shutdownBufferPool(BM_BufferPool *const bm)
 		}
 	}
 	free(frames);
+	free(bm->statData);
+	free(bm->mgmtData);
   bm->mgmtData = NULL;
 	if (isPageInBuffer)
 	{
