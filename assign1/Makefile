@@ -1,7 +1,7 @@
 TEST_STORAGE_MGR=test_assign1_1
 TEST_STORAGE_MGR_EXTRA=test_assign1_2
 TEST_BUFFER_MGR=test_assign2_1
-CC=gcc
+CC=gcc -g
 
 all: ${TEST_STORAGE_MGR} ${TEST_STORAGE_MGR_EXTRA} ${TEST_BUFFER_MGR}
 
@@ -44,3 +44,4 @@ clean:
 	rm -f test_assign1_1
 	rm -f test_assign1_2
 	rm -f test_assign2_1
+	rm -f testbuffer.bin

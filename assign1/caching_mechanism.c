@@ -7,9 +7,9 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
     Frame *frames = (Frame *)bm->mgmtData;
     Stats *stat = (Stats *)bm->statData;
     int eviction_index = stat->lastposition%bm->numPages;
-
+    stat->lastposition = stat->lastposition + 1;
     int i;
-    for (int i=0; i<bm->numPages; i++)
+    for (i=0; i<bm->numPages; i++)
     {
       if(frames[eviction_index].fixedcount==0)
       {
@@ -19,11 +19,13 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
           }
           copyNewFrameInOld(&frames[eviction_index], freshframe);
           decreaseRankingForPages(bm, eviction_index);
+          bm->statData = stat;
           break;
       }
       else
       {
         eviction_index = eviction_index + 1;
+        printf("%s\n", "evic");
         if(eviction_index%bm->numPages == 0)
         {
           eviction_index = 0;

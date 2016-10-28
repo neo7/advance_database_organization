@@ -752,7 +752,7 @@ ensureCapacity (int numberOfPages, SM_FileHandle *fHandle)
     return RC_FILE_HANDLE_NOT_INIT;
   }
   int totalNumPages = fHandle->totalNumPages;
-    for (;fHandle->totalNumPages != numberOfPages;)
+    for (;fHandle->totalNumPages < numberOfPages;)
       appendEmptyBlock(fHandle);
   return RC_OK;
 }

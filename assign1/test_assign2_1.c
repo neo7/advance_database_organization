@@ -80,12 +80,10 @@ createDummyPages(BM_BufferPool *bm, int num)
   BM_PageHandle *h = MAKE_PAGE_HANDLE();
 
   CHECK(initBufferPool(bm, "testbuffer.bin", 3, RS_FIFO, NULL));
-  printf("%s", "done buffer ");
 
   for (i = 0; i < num; i++)
     {
       CHECK(pinPage(bm, h, i));
-      printf("%s", "reached loop");
       sprintf(h->data, "%s-%i", "Page", h->pageNum);
       CHECK(markDirty(bm, h));
       CHECK(unpinPage(bm,h));

@@ -19,25 +19,22 @@ initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 	bm->pageFile = (char *)pageFileName;
 	bm->numPages = numPages;
 	bm->strategy = strategy;
-	Frame *frames = malloc (sizeof(*frames)*numPages);
+	Frame *frames = malloc (sizeof(Frame)*numPages);
 
-	int pageCounter = numPages;
-	int frameLoopCounter = 0;
-	while (pageCounter > 0)
+	int i;
+	for (i=0; i<bm->numPages; i++)
 	{
-		frames[frameLoopCounter].pagedata = NULL;
-		frames[frameLoopCounter].pagenum = -1;
-		frames[frameLoopCounter].dirtybit = DIRTY_UNFLAG;
-		frames[frameLoopCounter].fixedcount = 0;
-		frameLoopCounter++;
-		pageCounter--;
+		frames[i].pagedata = NULL;
+		frames[i].pagenum = -1;
+		frames[i].dirtybit = DIRTY_UNFLAG;
+		frames[i].fixedcount = 0;
 	}
 	bm->mgmtData = frames;
 
 	stats->hitcount = 0;
 	stats->readcount = 0;
 	stats->writecount = 0;
-	stats->lastposition = 0;
+	stats->lastposition = -1;
 	bm->statData = stats;
 	return RC_OK;
 }
@@ -55,10 +52,8 @@ shutdownBufferPool(BM_BufferPool *const bm)
 			isPageInBuffer = true;
 		}
 	}
-    if (	bm->mgmtData == NULL){
-
-        return RC_BUFFER_NOTINITIALIZED;
-    }
+	free(frames);
+  bm->mgmtData = NULL;
 	if (isPageInBuffer)
 	{
 		return RC_PAGE_IN_BUFFER_ERROR;
@@ -195,14 +190,18 @@ pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 		{
 			SM_FileHandle filehandle;
 			openPageFile (bm->pageFile, &filehandle);
+			ensureCapacity(pageNum, &filehandle);
 			frames[i].pagedata = (SM_PageHandle) malloc(PAGE_SIZE);
-			readBlock(pageNum, &filehandle, frames[i].pagedata);
+			int readerror = readBlock(pageNum, &filehandle, frames[i].pagedata);
+			closePageFile(&filehandle);
 			frames[i].pagenum = pageNum;
 			frames[i].fixedcount = frames[i].fixedcount + 1;
 			stat->lastposition = stat->lastposition + 1;
 			stat->readcount = stat->readcount + 1;
 			bm->statData = stat;
 			decreaseRankingForPages(bm, i);
+			page->pageNum = pageNum;
+			page->data = frames[i].pagedata;
 			return RC_OK;
 		}
 		else if (frames[i].pagenum == pageNum)
@@ -215,6 +214,8 @@ pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 			stat->lastposition = stat->lastposition + 1;
 			stat->hitcount = stat->hitcount + 1;
 			decreaseRankingForPages(bm, i);
+			page->pageNum = pageNum;
+			page->data = frames[i].pagedata;
 			return RC_OK;
 	  }
 	}
@@ -222,23 +223,29 @@ pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 	openPageFile (bm->pageFile, &filehandle);
 	newframe->pagedata = (SM_PageHandle) malloc(PAGE_SIZE);
 	readBlock(pageNum, &filehandle, newframe->pagedata);
+	closePageFile(&filehandle);
 	newframe->pagenum = pageNum;
 	newframe->fixedcount = 1;
 	newframe->dirtybit = DIRTY_UNFLAG;
 	newframe->ranking = INT_MAX;
 
-	stat->lastposition = stat->lastposition + 1;
 	stat->readcount = stat->readcount + 1;
 	bm->statData = stat;
 
 	if (bm->strategy == RS_FIFO)
 	{
 	 fifo(bm, newframe);
+	 page->pageNum = pageNum;
+ 	 page->data = newframe->pagedata;
+
 	 return RC_OK;
 	}
 	if (bm->strategy == RS_LRU)
 	{
 		lru(bm, newframe);
+		page->pageNum = pageNum;
+		page->data = newframe->pagedata;
+
 		return RC_OK;
 	}
 	return RC_PIN_PAGE_ERROR;
@@ -338,6 +345,7 @@ int writeBlockToPage(BM_BufferPool *const bm, Frame *frame)
 	Stats * stats = (Stats *) bm->statData;
 	openPageFile(bm->pageFile, &fh);
 	writeBlock(frame->pagenum, &fh, frame->pagedata);
+	closePageFile(&fh);
 	frame->dirtybit = DIRTY_UNFLAG;
 	stats->writecount++;
 	bm->statData = stats;
