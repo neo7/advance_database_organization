@@ -181,7 +181,7 @@ pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 {
 	Frame * frames = (Frame *) bm->mgmtData;
 	Stats * stat = (Stats *)bm->statData;
-	Frame *newframe;
+	Frame *newframe = (Frame *) malloc(sizeof(Frame));
 	int i;
 	for (i=0 ; i<bm->numPages; i++)
 	{
