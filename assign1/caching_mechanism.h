@@ -7,6 +7,6 @@
 void fifo (BM_BufferPool *const bm, Frame *freshframe);
 void lru (BM_BufferPool *const bm, Frame *freshframe);
 void copyNewFrameInOld(Frame *oldframe, Frame *freshframe);
-void decreaseRankingForPages(BM_BufferPool *const bm, int eviction_index);
+void decreaseRankingForPages(BM_BufferPool *const bm, int frameindex);
 
 #endif

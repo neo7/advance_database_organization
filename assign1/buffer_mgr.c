@@ -2,6 +2,7 @@
 #include "storage_mgr.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "caching_mechanism.h"
 
 
 RC
@@ -36,6 +37,7 @@ initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 	stats->hitcount = 0;
 	stats->readcount = 0;
 	stats->writecount = 0;
+	stats->lastposition = 0;
 	bm->statData = stats;
 	return RC_OK;
 }
@@ -181,9 +183,66 @@ forcePage (BM_BufferPool *const bm, BM_PageHandle *const page)
 
 RC
 pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
-	    const PageNumber pageNum){
-return 0;
-      }
+	    const PageNumber pageNum)
+{
+	Frame * frames = (Frame *) bm->mgmtData;
+	Stats * stat = (Stats *)bm->statData;
+	Frame *newframe;
+	int i;
+	for (i=0 ; i<bm->numPages; i++)
+	{
+		if (frames[i].pagenum == -1)
+		{
+			SM_FileHandle filehandle;
+			openPageFile (bm->pageFile, &filehandle);
+			frames[i].pagedata = (SM_PageHandle) malloc(PAGE_SIZE);
+			readBlock(pageNum, &filehandle, frames[i].pagedata);
+			frames[i].pagenum = pageNum;
+			frames[i].fixedcount = frames[i].fixedcount + 1;
+			stat->lastposition = stat->lastposition + 1;
+			stat->readcount = stat->readcount + 1;
+			bm->statData = stat;
+			decreaseRankingForPages(bm, i);
+			return RC_OK;
+		}
+		else if (frames[i].pagenum == pageNum)
+		{
+			if (frames[i].dirtybit == DIRTY_FLAG)
+			{
+				writeBlockToPage(bm, &frames[i]);
+			}
+			frames[i].fixedcount = frames[i].fixedcount + 1;
+			stat->lastposition = stat->lastposition + 1;
+			stat->hitcount = stat->hitcount + 1;
+			decreaseRankingForPages(bm, i);
+			return RC_OK;
+	  }
+	}
+	SM_FileHandle filehandle;
+	openPageFile (bm->pageFile, &filehandle);
+	newframe->pagedata = (SM_PageHandle) malloc(PAGE_SIZE);
+	readBlock(pageNum, &filehandle, newframe->pagedata);
+	newframe->pagenum = pageNum;
+	newframe->fixedcount = 1;
+	newframe->dirtybit = DIRTY_UNFLAG;
+	newframe->ranking = INT_MAX;
+
+	stat->lastposition = stat->lastposition + 1;
+	stat->readcount = stat->readcount + 1;
+	bm->statData = stat;
+
+	if (bm->strategy == RS_FIFO)
+	{
+	 fifo(bm, newframe);
+	 return RC_OK;
+	}
+	if (bm->strategy == RS_LRU)
+	{
+		lru(bm, newframe);
+		return RC_OK;
+	}
+	return RC_PIN_PAGE_ERROR;
+}
 
 
 PageNumber

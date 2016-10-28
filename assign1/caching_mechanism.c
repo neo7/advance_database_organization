@@ -18,6 +18,7 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
             writeBlockToPage(bm, &frames[eviction_index]);
           }
           copyNewFrameInOld(&frames[eviction_index], freshframe);
+          decreaseRankingForPages(bm, eviction_index);
           break;
       }
       else
@@ -28,7 +29,6 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
           eviction_index = 0;
         }
       }
-
     }
 }
 
@@ -43,14 +43,14 @@ lru (BM_BufferPool *const bm, Frame *freshframe)
   //search for min rank.
   for (i = 0; i<bm->numPages; i++)
   {
-    if (frames[i].ranking < minimum_rank)
+    if (frames[i].ranking < minimum_rank && frames[i].fixedcount == 0)
     {
       minimum_rank = frames[i].ranking;
       eviction_index = i;
     }
   }
 
-  if(frames[eviction_index].dirtybit == 1)
+  if(frames[eviction_index].dirtybit == DIRTY_FLAG)
   {
     writeBlockToPage(bm, &frames[eviction_index]);
   }
@@ -79,6 +79,10 @@ decreaseRankingForPages(BM_BufferPool *const bm, int frameindex)
     if (i != frameindex || frames[i].pagenum != -1)
     {
       frames[i].ranking = frames[i].ranking - 1;
+    }
+    else if (i == frameindex)
+    {
+      frames[i].ranking = INT_MAX;
     }
   }
 
