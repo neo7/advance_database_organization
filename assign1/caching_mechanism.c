@@ -1,6 +1,10 @@
 #include "caching_mechanism.h"
 #include "buffer_mgr.h"
-
+/**
+* caching mechanism
+* FIFO approach implemented by
+* @author Sukrit Gulati
+*/
 void
 fifo (BM_BufferPool *const bm, Frame *freshframe)
 {
@@ -35,6 +39,11 @@ fifo (BM_BufferPool *const bm, Frame *freshframe)
     }
 }
 
+/**
+* LRU caching mechanism which is based on the rank of each access of the page
+* Which is accessed by the buffer pool pin mechanism
+* @author Saurabh Tiwari
+*/
 void
 lru (BM_BufferPool *const bm, Frame *freshframe)
 {
@@ -69,7 +78,12 @@ lru (BM_BufferPool *const bm, Frame *freshframe)
 }
 
 
-//get index from pin page.
+/**
+* Decreases the ranking of pages if called from the method of LRU.
+*
+*
+* @author Saurabh Tiwari
+*/
 void
 decreaseRankingForPages(BM_BufferPool *const bm, int frameindex)
 {

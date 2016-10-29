@@ -4,6 +4,11 @@
 #include "caching_mechanism.h"
 
 
+/*
+ * This method initializes the buffer pool.
+ *
+ * @author Saurabh Tiwari
+ */
 RC
 initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 		  const int numPages, ReplacementStrategy strategy,
@@ -38,6 +43,11 @@ initBufferPool(BM_BufferPool *const bm, const char *const pageFileName,
 	bm->statData = stats;
 	return RC_OK;
 }
+/**
+* This method is used for cleaning the memory like buffer pool and
+* other data that has been used for many continuous operations.
+* @author Sukrit Gulati
+*/
 RC
 shutdownBufferPool(BM_BufferPool *const bm)
 {
@@ -53,9 +63,8 @@ shutdownBufferPool(BM_BufferPool *const bm)
 		}
 	}
 	free(frames);
-	free(bm->statData);
-	free(bm->mgmtData);
-  bm->mgmtData = NULL;
+	frames = NULL;
+	bm->mgmtData = NULL;
 	if (isPageInBuffer)
 	{
 		return RC_PAGE_IN_BUFFER_ERROR;
@@ -65,6 +74,12 @@ shutdownBufferPool(BM_BufferPool *const bm)
 		return RC_OK;
 	}
 }
+
+/**
+* This method is used for force writing every page which has a dirty bit
+* in it.
+* @author Sukrit Gulati
+*/
 RC
 forceFlushPool(BM_BufferPool *const bm){
     if (	bm->mgmtData == NULL){
@@ -86,7 +101,12 @@ forceFlushPool(BM_BufferPool *const bm){
 }
 
 
-// Buffer Manager Interface Access Pages
+/**
+* This method is used for marking the page dirtybit.
+* If there is anything written to the page then it marks that page as dirty
+*
+* @author Seungho Han.
+*/
 RC
 markDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
 {
@@ -116,6 +136,11 @@ markDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
 	}
 }
 
+/**
+* Unpins the page from the current pool of buffer.
+* That means that none of the clients are using it.
+* @author Saurabh Tiwari
+*/
 RC
 unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
 
@@ -132,6 +157,11 @@ unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page){
 	return RC_UNPIN_PAGE_ERROR;
 }
 
+/**
+* Forces the page to be written to the disk.
+* Irrespective of whther it is marked dirty or not.
+* @author Sukrit Gulati
+*/
 RC
 forcePage (BM_BufferPool *const bm, BM_PageHandle *const page)
 {
@@ -161,6 +191,14 @@ forcePage (BM_BufferPool *const bm, BM_PageHandle *const page)
     }
 }
 
+/**
+* Pins the page in the current buffer.
+* also it is the primary method which decides on the basis of
+* replacement strategy whther the page that has been pinned
+* will replace by the replacement methods either LRU or FIFO.
+*
+* @author Saurabh Tiwari
+*/
 RC
 pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 	    const PageNumber pageNum)
@@ -175,9 +213,12 @@ pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 		{
 			SM_FileHandle filehandle;
 			openPageFile (bm->pageFile, &filehandle);
-			ensureCapacity(pageNum, &filehandle);
 			frames[i].pagedata = (SM_PageHandle) malloc(PAGE_SIZE);
 			int readerror = readBlock(pageNum, &filehandle, frames[i].pagedata);
+			if(i==0)
+			{
+				ensureCapacity(pageNum, &filehandle);
+			}
 			closePageFile(&filehandle);
 			frames[i].pagenum = pageNum;
 			frames[i].fixedcount = 1;
@@ -207,15 +248,16 @@ pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 	}
 	SM_FileHandle filehandle;
 	openPageFile (bm->pageFile, &filehandle);
-	ensureCapacity(pageNum, &filehandle);
 	newframe->pagedata = (SM_PageHandle) malloc(PAGE_SIZE);
+	if (checkForLastPageNum(pageNum)){
+		ensureCapacity(pageNum, &filehandle);
+	}
 	readBlock(pageNum, &filehandle, newframe->pagedata);
 	closePageFile(&filehandle);
 	newframe->pagenum = pageNum;
 	newframe->fixedcount = 1;
 	newframe->dirtybit = DIRTY_UNFLAG;
 	newframe->ranking = INT_MAX;
-
 	stat->readcount = stat->readcount + 1;
 	bm->statData = stat;
 	page->pageNum = pageNum;
@@ -224,17 +266,26 @@ pinPage (BM_BufferPool *const bm, BM_PageHandle *const page,
 	if (bm->strategy == RS_FIFO)
 	{
 	 fifo(bm, newframe);
+	 free(newframe);
+	 newframe = NULL;
 	 return RC_OK;
 	}
 	if (bm->strategy == RS_LRU)
 	{
 		lru(bm, newframe);
+		free(newframe);
+		newframe = NULL;
 		return RC_OK;
 	}
 	return RC_PIN_PAGE_ERROR;
 }
 
-
+/**
+* Gets the frame contents from the pages and returns the
+* Page numbers which are present in the frame.
+*
+* @author Karthik Shivaram
+*/
 PageNumber
 *getFrameContents (BM_BufferPool *const bm)
 {
@@ -248,6 +299,11 @@ PageNumber
 	return pagenumberarray;
 }
 
+/**
+* Gets the dirty flags from the current set of frames
+*
+* @author Karthik Shivaram
+*/
 bool
 *getDirtyFlags (BM_BufferPool *const bm)
 {
@@ -272,6 +328,11 @@ bool
 	return dirtyflagarray;
 }
 
+/**
+* Get the fix counts of elements that are in buffer pool.
+*
+* @author Seungho Han
+*/
 int
 *getFixCounts (BM_BufferPool *const bm){
 
@@ -286,6 +347,11 @@ int
 	return fixedcountarray;
 }
 
+/**
+* This method gets the total read operations performed
+*
+* @author Sukrit Gulati
+*/
 int
 getNumReadIO (BM_BufferPool *const bm){
 
@@ -304,6 +370,13 @@ getNumReadIO (BM_BufferPool *const bm){
  }
 }
 
+/*
+* This method gets the total number of write operations
+* performed for a single opearation till the Buffer pool was
+* freed from the memory.
+*
+* @author Seungho Han
+*/
 int
 getNumWriteIO (BM_BufferPool *const bm)
 {
@@ -322,6 +395,11 @@ getNumWriteIO (BM_BufferPool *const bm)
  }
 }
 
+/**
+* A method that will write block of memory to storage
+*
+* @author Karthik Shivaram
+*/
 int writeBlockToPage(BM_BufferPool *const bm, Frame *frame)
 {
 	SM_FileHandle fh;
@@ -333,4 +411,22 @@ int writeBlockToPage(BM_BufferPool *const bm, Frame *frame)
 	stats->writecount++;
 	bm->statData = stats;
 	return RC_OK;
+}
+
+/**
+* Checks whether the given page is last or not
+* using the large page definition value defined
+* as a constant.
+* @author Saurabh Tiwari
+*/
+bool checkForLastPageNum(int pageNum)
+{
+	if(pageNum % (LARGE_PAGE-1) == 0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }

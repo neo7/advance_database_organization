@@ -7,7 +7,8 @@
 
 // Include bool DT
 #include "dt.h"
-#define INT_MAX 32767
+#define INT_MAX 100
+#define LARGE_PAGE 10000
 
 // Replacement Strategies
 typedef enum ReplacementStrategy {
@@ -51,6 +52,7 @@ typedef struct Stats{
 
 } Stats;
 
+//definitions for dirty and clean flags.
 #define DIRTY_FLAG 1
 #define DIRTY_UNFLAG 0
 
@@ -87,6 +89,8 @@ bool *getDirtyFlags (BM_BufferPool *const bm);
 int *getFixCounts (BM_BufferPool *const bm);
 int getNumReadIO (BM_BufferPool *const bm);
 int getNumWriteIO (BM_BufferPool *const bm);
+//Additional methods for assignment 2
 int writeBlockToPage(BM_BufferPool *const bm, Frame *frame);
+bool checkForLastPageNum(int pageNum);
 
 #endif
