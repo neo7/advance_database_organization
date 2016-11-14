@@ -23,22 +23,48 @@ createTable (char *name, Schema *schema){
 
 RC
 openTable (RM_TableData *rel, char *name){
+
     return 0;
 }
 
 RC
 closeTable (RM_TableData *rel){
-    return 0;
+    int error_code = shutdownBufferPool(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool);
+    free(rel->schema);
+    free(rel->mgmtData);
+    return error_code;
 }
 
 RC
 deleteTable (char *name){
-    return 0;
+    return destroyPageFile(name);
 }
 
 int
 getNumTuples (RM_TableData *rel){
-    return 0;
+    int tupleCount = 0;
+    Record *record = (Record *)malloc(sizeof(Record));
+    RID rid;
+    rid.page = 1;
+    rid.slot = 0;
+
+    while(rid.page > 0 && rid.page <total_pages)
+    {
+        RC record_present = getRecord(rel, rid, record);
+        if(record_present == RC_OK)
+        {
+            tupleCount += 1;
+            rid.page += 1;
+            rid.slot = 0;
+
+        }
+    }
+
+    free(record);
+    record = NULL;
+
+    return tupleCount;
+
 }
 
 // handling records in a table
@@ -65,7 +91,15 @@ getRecord (RM_TableData *rel, RID id, Record *record){
 // scans
 RC
 startScan (RM_TableData *rel, RM_ScanHandle *scan, Expr *cond){
-    return 0;
+    RM_ScanMgmt *scanMgmt = (RM_ScanMgmt *)malloc(sizeof(RM_ScanMgmt));
+    Record *record = (Record *) malloc(sizeof(Record));
+    scanMgmt->expr = cond;
+    scanMgmt->record = record;
+    scanMgmt->rid.page = 1;
+    scanMgmt->rid.slot = 0;
+    scan->mgmtData = scanMgmt;
+
+    return RC_OK;
 }
 
 RC
@@ -75,7 +109,15 @@ next (RM_ScanHandle *scan, Record *record){
 
 RC
 closeScan (RM_ScanHandle *scan){
-    return 0;
+
+    RM_ScanMgmt *scanMgmt = (RM_ScanMgmt *)scan->mgmtData;
+    free(scanMgmt->record);
+    free(scanMgmt->expr);
+    free(scanMgmt);
+    scanMgmt = NULL;
+
+    return RC_OK;
+
 }
 
 // dealing with schemas
@@ -113,10 +155,10 @@ freeSchema (Schema *schema)
 RC createRecord (Record **record, Schema *schema)
 {
     *record = (Record *) malloc(sizeof(Record));
-    char *data = (*record)->data;
-    data = (char *)malloc(getRecordSize(schema));
+    char *data = (char *)malloc(getRecordSize(schema));
     (*record)->data = data;
 
+    return RC_OK;
 
 }
 
@@ -128,7 +170,34 @@ RC freeRecord (Record *record)
 
 RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 {
-    return 0;
+    //note: recheck string assignment on errors.
+    int offset = getRecordSizeOffset(schema, attrNum);
+    char *attributeData = record->data + offset;
+    int typeLength = schema->typeLength[attrNum];
+
+    *value = (Value *)malloc(sizeof(Value));
+    (*value)->dt = schema->dataTypes[attrNum];
+    if (schema->dataTypes[attrNum] == DT_INT)
+    {
+        memcpy(&((*value)->v.intV), attributeData, typeLength);
+    } else if (schema->dataTypes[attrNum] == DT_FLOAT)
+    {
+        memcpy(&((*value)->v.floatV), attributeData, typeLength);
+    }
+    else if (schema->dataTypes[attrNum] == DT_BOOL)
+    {
+        memcpy(&((*value)->v.boolV), attributeData, typeLength);
+    }
+    else if (schema->dataTypes[attrNum] == DT_STRING)
+    {
+        memcpy((*value)->v.stringV, attributeData, typeLength);
+    } else
+    {
+        return RC_RM_UNKOWN_DATATYPE;
+    }
+
+    return RC_OK;
+
 }
 
 RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
@@ -142,18 +211,22 @@ RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
         case DT_BOOL:
         {
             memcpy(attributeData, &(value->v.boolV), schema->typeLength[attrNum]);
+            break;
         }
         case DT_FLOAT:
         {
             memcpy(attributeData, &(value->v.floatV), schema->typeLength[attrNum]);
+            break;
         }
         case DT_INT:
         {
             memcpy(attributeData, &(value->v.intV), schema->typeLength[attrNum]);
+            break;
         }
         case DT_STRING:
         {
-            memcpy(attributeData, value->v.stringV, schema->typeLength[attrNum]*sizeof(char));
+            memcpy(attributeData, value->v.stringV, schema->typeLength[attrNum]);
+            break;
         }
         default:
         {

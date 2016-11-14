@@ -14,6 +14,19 @@ typedef struct RM_ScanHandle
   void *mgmtData;
 } RM_ScanHandle;
 
+typedef struct RM_TableMgmt{
+    BM_BufferPool *bm_bufferPool;
+    int pageNum;
+
+} RM_TableMgmt;
+
+typedef struct RM_ScanMgmt{
+    Record *record;
+    Expr *expr;
+    RID rid;
+
+}RM_ScanMgmt;
+
 // table and manager
 extern RC initRecordManager (void *mgmtData);
 extern RC shutdownRecordManager ();
@@ -45,5 +58,9 @@ extern RC freeRecord (Record *record);
 extern RC getAttr (Record *record, Schema *schema, int attrNum, Value **value);
 extern RC setAttr (Record *record, Schema *schema, int attrNum, Value *value);
 extern int getRecordSizeOffset(Schema *schema, int attrNum);
+
+extern int schema_size;
+extern int total_pages;
+
 
 #endif // RECORD_MGR_H
