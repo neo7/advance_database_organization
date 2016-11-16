@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "object_parser.h"
 
 
 int schema_size;
@@ -73,7 +74,7 @@ openTable (RM_TableData *rel, char *name){
     pinPage(bm_bufferPool, bm_pageHandle, 0);
 
     tableMgmt->pageNum = total_pages;
-    rel->schema = bm_pageHandle->data;
+    rel->schema = stringToSchemaParser(bm_pageHandle->data);
     rel->name = name;
 
     free(readPointer);
