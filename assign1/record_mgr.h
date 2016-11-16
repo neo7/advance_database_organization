@@ -18,6 +18,7 @@ typedef struct RM_ScanHandle
 
 typedef struct RM_TableMgmt{
     BM_BufferPool *bm_bufferPool;
+    BM_PageHandle *bm_pageHandle;
     int pageNum;
 
 } RM_TableMgmt;

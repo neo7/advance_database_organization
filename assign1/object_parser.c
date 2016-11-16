@@ -85,15 +85,13 @@ Schema *stringToSchemaParser(char *data)
 
 
 
-//    for (i = 0; i < c; i++)
-//        printf("string #%d: %s\n", attrNum, attributeArray[i]);
     char *attributeStringPointer = strstr(attributeArray[1], "(")+1;
     char * substring = strstr(attributeStringPointer, ")");
     int length = substring - attributeStringPointer;
     char *attributeString = malloc(length);
     memcpy(attributeString, attributeStringPointer, length);
 
-    printf("string #%d: %s\n", length, attributeString);
+    //printf("string #%d: %s\n", length, attributeString);
     char **datatypeArray = NULL;
     c = split(attributeString, ',', &datatypeArray);
     char * splitAttribute = (char *) malloc(sizeof(char));
@@ -137,13 +135,11 @@ Schema *stringToSchemaParser(char *data)
     keyAttribute =strtok(keyAttribute,"(");
     keyAttribute =strtok(NULL,"(");
 
-    //keyAttribute =strtok(keyAttribute,"(");
     keyAttribute =strtok(keyAttribute,")");
     keyAttribute = strtok(keyAttribute, ", ");
 
     int keyNum = 0;
     char **keys = (char**) malloc(sizeof(char*)*schema->numAttr);
-    //char *keys[schema->numAttr];
     while (keyAttribute)
     {
         keys[keyNum] = (char*)malloc(sizeof(char*));

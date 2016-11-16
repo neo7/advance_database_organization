@@ -72,13 +72,13 @@ openTable (RM_TableData *rel, char *name){
     BM_PageHandle *bm_pageHandle = ((BM_PageHandle *) malloc (sizeof(BM_PageHandle)));
     initBufferPool(bm_bufferPool, name, 6, RS_FIFO, NULL);
     pinPage(bm_bufferPool, bm_pageHandle, 0);
-
     tableMgmt->pageNum = total_pages;
     rel->schema = stringToSchemaParser(bm_pageHandle->data);
     rel->name = name;
+    tableMgmt->bm_pageHandle = bm_pageHandle;
+    rel->mgmtData = tableMgmt;
 
     free(readPointer);
-    free(bm_pageHandle);
     return RC_OK;
 
 
@@ -89,6 +89,7 @@ openTable (RM_TableData *rel, char *name){
 
 RC
 closeTable (RM_TableData *rel){
+    unpinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool, ((RM_TableMgmt *)rel->mgmtData)->bm_pageHandle);
     int error_code = shutdownBufferPool(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool);
     free(rel->schema);
     free(rel->mgmtData);
@@ -139,13 +140,72 @@ deleteRecord (RM_TableData *rel, RID id){
 }
 
 RC
-updateRecord (RM_TableData *rel, Record *record){
-    return 0;
+updateRecord (RM_TableData *rel, Record *record)
+{
+
+    int i;
+
+    char *serialized = serializeRecord(record, rel->schema);
+
+    if (record->id.page > total_pages || record->id.page < 0)
+    {
+        return RC_RM_NO_MORE_TUPLES;
+    }
+
+    BM_PageHandle *ph = MAKE_PAGE_HANDLE();
+
+    pinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool, ph, record->id.page);
+    for (i = 0; i < sizeof(ph->data); i++)
+        memcpy(&ph->data[i], NULL, sizeof(ph->data));
+
+    sprintf(ph->data, "%s", serialized);
+
+    markDirty(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool, ph);
+    unpinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool, ph);
+    forcePage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool, ph);
+
+    free(serialized);
+    free(ph);
+
+    return RC_OK;
 }
 
 RC
 getRecord (RM_TableData *rel, RID id, Record *record){
-    return 0;
+
+    if(id.page > 0 && id.page <= total_pages){
+
+        BM_PageHandle *pagehandle = MAKE_PAGE_HANDLE() ;
+
+        //Pining the Page
+        pinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool,pagehandle,id.page);
+
+        char *temp_data_record = (char *)malloc(sizeof(char) * strlen(pagehandle->data));
+
+        strcpy(temp_data_record,pagehandle->data);
+
+        // Setting the record id
+        record->id = id ;
+
+        Record *converted_record = temp_data_record;
+
+        unpinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool,pagehandle);
+
+        // Setting the data read from pagefile after Deserializing it
+        record->data = converted_record->data ;
+
+        free(converted_record);
+        free(pagehandle);
+
+        return RC_OK ;
+
+    }
+
+    else {
+        return RC_RM_NO_MORE_TUPLES ;
+    }
+
+    return RC_OK ;
 }
 
 // scans
@@ -163,8 +223,47 @@ startScan (RM_TableData *rel, RM_ScanHandle *scan, Expr *cond){
 }
 
 RC
-next (RM_ScanHandle *scan, Record *record){
-    return 0;
+next (RM_ScanHandle *scan, Record *record)
+{
+    RID rid;
+    Expr* condition;
+    Value *con_result;
+
+    rid = ((RM_ScanMgmt *)scan->mgmtData)->rid;
+    condition = ((RM_ScanMgmt *)scan->mgmtData)->expr;
+
+    if( condition == NULL ) {
+        if (rid.page > 0 && rid.page < total_pages) {
+            getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
+            record = ((RM_ScanMgmt *)scan->mgmtData)->record;
+
+            rid.page = ((RM_ScanMgmt *)scan->mgmtData)->rid.page + 1;
+            rid.slot = ((RM_ScanMgmt *)scan->mgmtData)->rid.slot;
+
+            return RC_OK;
+        }
+    }
+    else {
+        if (rid.page > 0 && rid.page < total_pages) {
+
+            getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
+            evalExpr(((RM_ScanMgmt *)scan->mgmtData)->record, scan->rel->schema, condition, &con_result);
+            if (con_result->dt == DT_BOOL && con_result->v.boolV == true) {
+                record = ((RM_ScanMgmt *)scan->mgmtData)->record;
+
+                return RC_OK;
+            }
+            else {
+                rid.page = ((RM_ScanMgmt *)scan->mgmtData)->rid.page + 1;
+                rid.slot = ((RM_ScanMgmt *)scan->mgmtData)->rid.slot;
+            }
+        }
+    }
+
+    ((RM_ScanMgmt *)scan->mgmtData)->rid.page = 1;
+
+
+    return RC_RM_NO_MORE_TUPLES;
 }
 
 RC
