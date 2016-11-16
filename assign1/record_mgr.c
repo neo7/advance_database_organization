@@ -4,6 +4,11 @@
 #include "record_mgr.h"
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+
+int schema_size;
+int total_pages;
 
 RC
 initRecordManager (void *mgmtData){
@@ -18,11 +23,65 @@ shutdownRecordManager (){
 
 RC
 createTable (char *name, Schema *schema){
-    return 0;
+    SM_FileHandle fileHandle;
+    char *serializedSchema;
+    int isFileAccessible = access(name, F_OK);
+    int createPageFileErrorCode = createPageFile(name);
+    int openPageFileErrorCode = openPageFile(name, &fileHandle);
+
+    if (isFileAccessible != NO_PAGE)
+    {
+        return RC_TABLE_EXISTS;
+    } else if (createPageFileErrorCode != RC_OK)
+    {
+        return RC_FILE_NOT_FOUND;
+    } else if (openPageFileErrorCode != RC_OK)
+    {
+        return RC_FILE_NOT_FOUND;
+    }
+
+    schema_size = 0;
+    serializedSchema = serializeSchema(schema);
+
+    int writeBlockErrorCode = writeBlock(START_BLOCK, &fileHandle, serializedSchema);
+    if (writeBlockErrorCode == 0)
+    {
+        return RC_OK;
+    }
+    else
+    {
+        return RC_WRITE_FAILED;
+    }
+
+
 }
 
 RC
 openTable (RM_TableData *rel, char *name){
+    RM_TableMgmt *tableMgmt = (RM_TableMgmt *) malloc(sizeof(RM_TableMgmt));
+    FILE *filePointer;
+
+    filePointer = fopen(name, "r+");
+    char *readPointer = (char *)calloc(PAGE_SIZE, sizeof(char));
+    fgets(readPointer, PAGE_SIZE, filePointer);
+
+    total_pages = atoi(readPointer);
+    BM_BufferPool *bm_bufferPool = ((BM_BufferPool *) malloc (sizeof(BM_BufferPool)));
+    tableMgmt->bm_bufferPool = bm_bufferPool;
+    BM_PageHandle *bm_pageHandle = ((BM_PageHandle *) malloc (sizeof(BM_PageHandle)));
+    initBufferPool(bm_bufferPool, name, 6, RS_FIFO, NULL);
+    pinPage(bm_bufferPool, bm_pageHandle, 0);
+
+    tableMgmt->pageNum = total_pages;
+    rel->schema = bm_pageHandle->data;
+    rel->name = name;
+
+    free(readPointer);
+    free(bm_pageHandle);
+    return RC_OK;
+
+
+
 
     return 0;
 }
@@ -48,7 +107,7 @@ getNumTuples (RM_TableData *rel){
     rid.page = 1;
     rid.slot = 0;
 
-    while(rid.page > 0 && rid.page <total_pages)
+    while(rid.page > 0 && rid.page < total_pages)
     {
         RC record_present = getRecord(rel, rid, record);
         if(record_present == RC_OK)

@@ -7,6 +7,8 @@
 #include "storage_mgr.h"
 #include "buffer_mgr.h"
 
+#define START_BLOCK 0
+
 // Bookkeeping for scans
 typedef struct RM_ScanHandle
 {
