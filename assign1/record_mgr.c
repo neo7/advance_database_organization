@@ -40,8 +40,8 @@ createTable (char *name, Schema *schema){
     {
         return RC_FILE_NOT_FOUND;
     }
-    total_pages = 0;
     schema_size = 0;
+    total_pages = 0;
     serializedSchema = serializeSchema(schema);
 
     int writeBlockErrorCode = writeBlock(START_BLOCK, &fileHandle, serializedSchema);
@@ -67,6 +67,7 @@ openTable (RM_TableData *rel, char *name){
     fgets(readPointer, PAGE_SIZE, filePointer);
 
 
+
     BM_BufferPool *bm_bufferPool = ((BM_BufferPool *) malloc (sizeof(BM_BufferPool)));
     tableMgmt->bm_bufferPool = bm_bufferPool;
     BM_PageHandle *bm_pageHandle = ((BM_PageHandle *) malloc (sizeof(BM_PageHandle)));
@@ -81,10 +82,6 @@ openTable (RM_TableData *rel, char *name){
     free(readPointer);
     return RC_OK;
 
-
-
-
-    return 0;
 }
 
 RC
@@ -137,7 +134,7 @@ insertRecord (RM_TableData *rel, Record *record){
     temprid.page = 1 ;
     temprid.slot = 0 ;
     // Traversing to the last page available to insert the record
-    while(temprid.page > 0 && temprid.page < total_pages){
+    while(temprid.page > 0 && temprid.page <= total_pages){
         temprid.page += 1 ;
     }
     //Marking Page as free using pageNum
