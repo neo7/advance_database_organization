@@ -441,30 +441,50 @@ RC freeRecord (Record *record)
 
 RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 {
-    //note: recheck string assignment on errors.
+    //variables for offset
     int offset = getRecordSizeOffset(schema, attrNum);
-    char *attributeData = record->data + offset;
-    int typeLength = schema->typeLength[attrNum];
+    char *attrData;
 
-    *value = (Value *)malloc(sizeof(Value));
-    (*value)->dt = schema->dataTypes[attrNum];
-    if (schema->dataTypes[attrNum] == DT_INT)
+    *value = (Value*)malloc(sizeof(Value));
+
+    //calculate the offset, to get the attribute value from
+    attrData = record->data + offset;
+
+    (*value)->dt =schema->dataTypes[attrNum];
+
+    //switch on the attribute data types
+    switch(schema->dataTypes[attrNum])
     {
-        memcpy(&((*value)->v.intV), attributeData, typeLength);
-    } else if (schema->dataTypes[attrNum] == DT_FLOAT)
-    {
-        memcpy(&((*value)->v.floatV), attributeData, typeLength);
-    }
-    else if (schema->dataTypes[attrNum] == DT_BOOL)
-    {
-        memcpy(&((*value)->v.boolV), attributeData, typeLength);
-    }
-    else if (schema->dataTypes[attrNum] == DT_STRING)
-    {
-        memcpy((*value)->v.stringV, attributeData, typeLength);
-    } else
-    {
-        return RC_RM_UNKOWN_DATATYPE;
+        case DT_INT:
+        {
+            memcpy(&((*value)->v.intV) ,attrData,sizeof(int));	//get the attribute into value
+        }
+            break;
+
+        case DT_STRING:
+        {
+            char *buf;
+            int len = schema->typeLength[attrNum];
+            buf = (char *) malloc(len + 1);
+            strncpy(buf, attrData, len);
+            (*value)->v.stringV = buf;
+        }
+            break;
+
+        case DT_FLOAT:
+        {
+            memcpy(&((*value)->v.floatV),attrData, sizeof(float));
+        }
+            break;
+
+        case DT_BOOL:
+        {
+            memcpy(&((*value)->v.boolV),attrData ,sizeof(bool));
+        }
+            break;
+
+        default:
+            return RC_RM_UNKOWN_DATATYPE;
     }
 
     return RC_OK;

@@ -68,5 +68,5 @@ clean:
 	rm -f test_assign3_1
 	rm -f testbuffer.bin
 	rm -f test_table_t
-
+	rm -f test_table_r
 
