@@ -160,11 +160,10 @@ serializeRecord(Record *record, Schema *schema)
   for(i = 0; i < schema->numAttr; i++)
     {
       APPEND_STRING(result, serializeAttr (record, schema, i));
-      APPEND(result, "%s", (i == 0) ? "" : ",");
+      APPEND(result, "%s", (i == schema->numAttr -1) ? "" : ",");
     }
   
   APPEND_STRING(result, ")");
-
   RETURN_STRING(result);
 }
 

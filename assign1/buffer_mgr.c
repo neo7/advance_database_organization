@@ -1,5 +1,4 @@
 #include "buffer_mgr.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include "caching_mechanism.h"
 
@@ -171,7 +170,7 @@ forcePage (BM_BufferPool *const bm, BM_PageHandle *const page)
     return RC_BUFFER_NOTINITIALIZED;
     }
 
-    if (page->pageNum == -1 || page->pageNum > bm->numPages) {
+    if (page->pageNum == -1 ) {//|| page->pageNum > bm->numPages
         return RC_PAGE_ERROR;
     }
 

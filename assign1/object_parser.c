@@ -176,3 +176,66 @@ Schema *stringToSchemaParser(char *data)
 
 
 }
+
+Record *stringToRecordParser(char *data, Schema *schema)
+{
+    int i, lastAttr = schema->numAttr-1;
+    int intVal;
+    float floatVal;
+    bool boolVal;
+
+    Value *value;
+    Record *record = (Record*)malloc(sizeof(Record*));
+    record->data = (char*)malloc(sizeof(char*));
+
+    char *splitStart, *splitEnd;
+
+    splitStart = strtok(data,"(");
+
+    for(i=0;i< schema->numAttr;i++)
+    {
+        splitEnd = strtok(NULL,":");
+
+        if(i == lastAttr)
+        {
+            splitEnd = strtok(NULL,")");
+        }
+        else
+        {
+            splitEnd = strtok(NULL,",");
+        }
+
+        switch(schema->dataTypes[i])
+        {
+            case DT_INT:
+                intVal = strtol(splitEnd, &splitStart, 10);
+                MAKE_VALUE(value,DT_INT,intVal);
+                setAttr(record,schema,i,value);
+                free(value);
+                break;
+
+            case DT_FLOAT:
+                floatVal = strtof(splitEnd, NULL);
+                MAKE_VALUE(value,DT_FLOAT,floatVal);
+                setAttr(record,schema,i,value);
+                free(value);
+                break;
+
+            case DT_BOOL:
+                boolVal = (splitEnd[0] == 't') ? TRUE: FALSE;
+                MAKE_VALUE(value,DT_BOOL,boolVal);
+                setAttr(record,schema,i,value);
+                free(value);
+                break;
+
+            case DT_STRING:
+                MAKE_STRING_VALUE(value,splitEnd);
+                setAttr (record,schema,i,value);
+                freeVal(value);
+                break;
+        }
+
+    }
+
+    return record;
+}

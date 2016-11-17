@@ -6,8 +6,10 @@
 #define OBJECT_PARSER_H_H
 
 #include "tables.h"
+#include "record_mgr.h"
 
 extern int split (char *str, char c, char ***arr);
 extern Schema *stringToSchemaParser(char *data);
+extern Record *stringToRecordParser(char *data, Schema *schema);
 
 #endif //ASG2_GROUP25_OBJECT_PARSER_H_H

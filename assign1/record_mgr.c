@@ -40,7 +40,7 @@ createTable (char *name, Schema *schema){
     {
         return RC_FILE_NOT_FOUND;
     }
-
+    total_pages = 0;
     schema_size = 0;
     serializedSchema = serializeSchema(schema);
 
@@ -66,13 +66,13 @@ openTable (RM_TableData *rel, char *name){
     char *readPointer = (char *)calloc(PAGE_SIZE, sizeof(char));
     fgets(readPointer, PAGE_SIZE, filePointer);
 
-    total_pages = atoi(readPointer);
+
     BM_BufferPool *bm_bufferPool = ((BM_BufferPool *) malloc (sizeof(BM_BufferPool)));
     tableMgmt->bm_bufferPool = bm_bufferPool;
     BM_PageHandle *bm_pageHandle = ((BM_PageHandle *) malloc (sizeof(BM_PageHandle)));
     initBufferPool(bm_bufferPool, name, 6, RS_FIFO, NULL);
     pinPage(bm_bufferPool, bm_pageHandle, 0);
-    tableMgmt->pageNum = total_pages;
+    tableMgmt->pageNum = 0;
     rel->schema = stringToSchemaParser(bm_pageHandle->data);
     rel->name = name;
     tableMgmt->bm_pageHandle = bm_pageHandle;
@@ -131,12 +131,129 @@ getNumTuples (RM_TableData *rel){
 // handling records in a table
 RC
 insertRecord (RM_TableData *rel, Record *record){
-    return 0;
+
+//    Record * tempr = (Record *)calloc(1,sizeof(record));
+    RID temprid ;
+    temprid.page = 1 ;
+    temprid.slot = 0 ;
+    // Traversing to the last page available to insert the record
+    while(temprid.page > 0 && temprid.page < total_pages){
+        temprid.page += 1 ;
+    }
+    //Marking Page as free using pageNum
+    int freePageNUM = temprid.page ;
+    ((RM_TableMgmt *)rel->mgmtData)->pageNum = freePageNUM ;
+
+    BM_PageHandle * temp_page = MAKE_PAGE_HANDLE() ;
+    record->id.page = freePageNUM ;
+    record->id.slot = 0 ;
+
+    char *serializedRec = serializeRecord(record,rel->schema);
+
+    pinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool,temp_page,freePageNUM);
+
+    int i ;
+    //Initializing the record in page to \0
+    memset(temp_page->data, '\0', strlen(temp_page->data));
+//    for(i=0;i<sizeof(temp_page->data);i++){
+//        memcpy(&temp_page->data[i],'\0', sizeof(char));
+//    }
+
+    //Writing the serialized record to the page struct
+    sprintf(temp_page->data,"%s",serializedRec);
+
+    //Initializing error check variables for markDirty, unpinPage and forcePage
+    RC error_dirtymark;
+    RC error_unpinPage;
+    RC error_forcePage;
+
+    //Marking page Dirty due to writing data
+    error_dirtymark = markDirty(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool,temp_page);
+    if(error_dirtymark != RC_OK){
+        return error_dirtymark;
+    }
+
+    //Unpinning the page after use and marking it dirty
+    error_unpinPage = unpinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool,temp_page);
+    if(error_unpinPage != RC_OK){
+        return error_unpinPage ;
+    }
+
+    // Pushing the data to the Page
+    error_forcePage = forcePage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool,temp_page);
+    if(error_forcePage != RC_OK){
+        return error_forcePage ;
+    }
+
+    ((RM_TableMgmt *)rel->mgmtData)->pageNum += 1 ;
+    total_pages+=1 ;
+    free(temp_page);
+    return RC_OK;
 }
 
 RC
-deleteRecord (RM_TableData *rel, RID id){
-    return 0;
+deleteRecord (RM_TableData *rel, RID id)
+{
+
+    char *tombStoneFLAG = "TOMBESTONED" ;
+
+    char *flaggedRecordPlaceHolder = (char *)malloc(sizeof(Record)+strlen(tombStoneFLAG));
+    if(id.page >0 && id.page<= total_pages)
+    {
+        BM_PageHandle *tempPage = MAKE_PAGE_HANDLE();
+
+        RC error_pinpg;
+        error_pinpg = pinPage(((RM_TableMgmt *) rel->mgmtData)->bm_bufferPool, tempPage, id.page);
+        if (error_pinpg != RC_OK)
+        {
+            return error_pinpg;
+        }
+
+        //WE Concantenating the strings and assign it to temp
+        strcat(flaggedRecordPlaceHolder, tombStoneFLAG);
+        strcat(flaggedRecordPlaceHolder, tempPage->data);
+
+        //we update page id
+        tempPage->pageNum = id.page;
+
+        //We rewrite the marked record in our Page file
+
+        int i;
+        //Initializing the record in page to \0
+        memset(tempPage->data, '\0', strlen(tempPage->data));
+
+        sprintf(tempPage->data, "%s", flaggedRecordPlaceHolder);
+
+        //Initializing error check variables for markDirty, unpinPage and forcePage
+        RC error_dirtymark;
+        RC error_unpinPage;
+        RC error_forcePage;
+
+        //Marking page Dirty due to writing data
+        error_dirtymark = markDirty(((RM_TableMgmt *) rel->mgmtData)->bm_bufferPool, tempPage);
+        if (error_dirtymark != RC_OK)
+        {
+            return error_dirtymark;
+        }
+
+        //Unpinning the page after use and marking it dirty
+        error_unpinPage = unpinPage(((RM_TableMgmt *) rel->mgmtData)->bm_bufferPool, tempPage);
+        if (error_unpinPage != RC_OK)
+        {
+            return error_unpinPage;
+        }
+
+        // Pushing the data to the Page
+        error_forcePage = forcePage(((RM_TableMgmt *) rel->mgmtData)->bm_bufferPool, tempPage);
+        if (error_forcePage != RC_OK)
+        {
+            return error_forcePage;
+        }
+        free(tempPage);
+        return RC_OK;
+    }
+    return RC_RM_NO_MORE_TUPLES;
+
 }
 
 RC
@@ -155,9 +272,7 @@ updateRecord (RM_TableData *rel, Record *record)
     BM_PageHandle *ph = MAKE_PAGE_HANDLE();
 
     pinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool, ph, record->id.page);
-    for (i = 0; i < sizeof(ph->data); i++)
-        memcpy(&ph->data[i], NULL, sizeof(ph->data));
-
+    memset(ph->data, '\0', strlen(ph->data));
     sprintf(ph->data, "%s", serialized);
 
     markDirty(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool, ph);
@@ -187,7 +302,7 @@ getRecord (RM_TableData *rel, RID id, Record *record){
         // Setting the record id
         record->id = id ;
 
-        Record *converted_record = temp_data_record;
+        Record *converted_record = stringToRecordParser(temp_data_record, rel->schema);
 
         unpinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool,pagehandle);
 
@@ -361,36 +476,47 @@ RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 
 RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
 {
-    //note: recheck string assignment on errors.
+    //Modifying rm_serializer serializeAttr
+
+    char *attrData;
+
+    //calculate the offset values
     int offset = getRecordSizeOffset(schema, attrNum);
-    char *attributeData = record->data;
-    attributeData = attributeData + offset;
-    switch (schema->dataTypes[attrNum])
+    attrData = record->data + offset;
+
+    //switch on attributes datatype value
+    switch(schema->dataTypes[attrNum])
     {
-        case DT_BOOL:
-        {
-            memcpy(attributeData, &(value->v.boolV), schema->typeLength[attrNum]);
-            break;
-        }
-        case DT_FLOAT:
-        {
-            memcpy(attributeData, &(value->v.floatV), schema->typeLength[attrNum]);
-            break;
-        }
         case DT_INT:
         {
-            memcpy(attributeData, &(value->v.intV), schema->typeLength[attrNum]);
-            break;
+            memcpy(attrData,&(value->v.intV) ,sizeof(int));		//copy the newly set attribute value
         }
+            break;
+
         case DT_STRING:
         {
-            memcpy(attributeData, value->v.stringV, schema->typeLength[attrNum]);
+            char *buf;
+            int len = schema->typeLength[attrNum];
+            buf = (char *) malloc(len);
+            buf = value->v.stringV;
+            memcpy(attrData,buf,len);
+        }
             break;
-        }
-        default:
+
+        case DT_FLOAT:
         {
-            return RC_RM_UNKOWN_DATATYPE;
+            memcpy(attrData,&(value->v.floatV), sizeof(float));
         }
+            break;
+
+        case DT_BOOL:
+        {
+            memcpy(attrData,&(value->v.boolV) ,sizeof(bool));
+        }
+            break;
+
+        default:
+            return RC_RM_UNKOWN_DATATYPE;
     }
     return RC_OK;
 }
