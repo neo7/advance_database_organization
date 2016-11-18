@@ -338,13 +338,13 @@ RC
 next (RM_ScanHandle *scan, Record *record)
 {
     RID rid;
-    //Expr* condition ;
+    Expr* condition ;
     Value *con_result;
 
     rid = ((RM_ScanMgmt *)scan->mgmtData)->rid;
-    //condition = ((RM_ScanMgmt *)scan->mgmtData)->expr;
+    condition = ((RM_ScanMgmt *)scan->mgmtData)->expr;
 
-    if( ((RM_ScanMgmt *)scan->mgmtData)->expr == NULL ) {
+    if( condition == NULL ) {
         while(rid.page > 0 && rid.page < total_pages) {
             getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
             //record = ((RM_ScanMgmt *)scan->mgmtData)->record;
@@ -361,7 +361,7 @@ next (RM_ScanHandle *scan, Record *record)
          while(rid.page > 0 && rid.page <= total_pages) {
 
             getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
-            evalExpr(((RM_ScanMgmt *)scan->mgmtData)->record, scan->rel->schema, ((RM_ScanMgmt *)scan->mgmtData)->expr, &con_result);
+            evalExpr(((RM_ScanMgmt *)scan->mgmtData)->record, scan->rel->schema, condition, &con_result);
             if (con_result->dt == DT_BOOL && con_result->v.boolV) {
                 record->data = ((RM_ScanMgmt *)scan->mgmtData)->record->data;
                 record->id = ((RM_ScanMgmt *)scan->mgmtData)->record->id;
