@@ -330,7 +330,7 @@ startScan (RM_TableData *rel, RM_ScanHandle *scan, Expr *cond){
     scanMgmt->rid.page = 1;
     scanMgmt->rid.slot = 0;
     scan->mgmtData = scanMgmt;
-
+    scan->rel = rel;
     return RC_OK;
 }
 
@@ -345,18 +345,18 @@ next (RM_ScanHandle *scan, Record *record)
     condition = ((RM_ScanMgmt *)scan->mgmtData)->expr;
 
     if( condition == NULL ) {
-        if (rid.page > 0 && rid.page < total_pages) {
+        while(rid.page > 0 && rid.page < total_pages) {
             getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
             record = ((RM_ScanMgmt *)scan->mgmtData)->record;
-
-            rid.page = ((RM_ScanMgmt *)scan->mgmtData)->rid.page + 1;
+            ((RM_ScanMgmt*)scan->mgmtData)->rid.page = ((RM_ScanMgmt*)scan->mgmtData)->rid.page +1 ;
+            rid.page = ((RM_ScanMgmt *)scan->mgmtData)->rid.page;
             rid.slot = ((RM_ScanMgmt *)scan->mgmtData)->rid.slot;
 
             return RC_OK;
         }
     }
     else {
-        if (rid.page > 0 && rid.page < total_pages) {
+         while(rid.page > 0 && rid.page < total_pages) {
 
             getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
             evalExpr(((RM_ScanMgmt *)scan->mgmtData)->record, scan->rel->schema, condition, &con_result);
@@ -366,7 +366,8 @@ next (RM_ScanHandle *scan, Record *record)
                 return RC_OK;
             }
             else {
-                rid.page = ((RM_ScanMgmt *)scan->mgmtData)->rid.page + 1;
+                ((RM_ScanMgmt*)scan->mgmtData)->rid.page = ((RM_ScanMgmt*)scan->mgmtData)->rid.page +1 ;
+                rid.page = ((RM_ScanMgmt *)scan->mgmtData)->rid.page;
                 rid.slot = ((RM_ScanMgmt *)scan->mgmtData)->rid.slot;
             }
         }
