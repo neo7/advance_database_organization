@@ -446,23 +446,21 @@ RC freeRecord (Record *record)
 
 RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 {
-    //variables for offset
     int offset = getRecordSizeOffset(schema, attrNum);
     char *attrData;
 
     *value = (Value*)malloc(sizeof(Value));
 
-    //calculate the offset, to get the attribute value from
     attrData = record->data + offset;
 
     (*value)->dt =schema->dataTypes[attrNum];
 
-    //switch on the attribute data types
     switch(schema->dataTypes[attrNum])
     {
         case DT_INT:
         {
             memcpy(&((*value)->v.intV) ,attrData,sizeof(int));	//get the attribute into value
+            
         }
             break;
 
@@ -473,6 +471,8 @@ RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
             buf = (char *) malloc(len + 1);
             strncpy(buf, attrData, len);
             (*value)->v.stringV = buf;
+            buf = NULL;
+            free(buf);
         }
             break;
 
@@ -498,20 +498,18 @@ RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 
 RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
 {
-    //Modifying rm_serializer serializeAttr
-
     char *attrData;
 
-    //calculate the offset values
     int offset = getRecordSizeOffset(schema, attrNum);
     attrData = record->data + offset;
 
-    //switch on attributes datatype value
     switch(schema->dataTypes[attrNum])
     {
         case DT_INT:
         {
-            memcpy(attrData,&(value->v.intV) ,sizeof(int));		//copy the newly set attribute value
+            memcpy(attrData,&(value->v.intV) ,sizeof(int));
+            value = NULL;
+            free(value);
         }
             break;
 
@@ -521,19 +519,27 @@ RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
             int len = schema->typeLength[attrNum];
             buf = (char *) malloc(len);
             buf = value->v.stringV;
-            memcpy(attrData,buf,len);
+            strncpy(attrData,buf,len);
+            buf = NULL;
+            free(buf);
         }
             break;
 
         case DT_FLOAT:
         {
             memcpy(attrData,&(value->v.floatV), sizeof(float));
+            value = NULL;
+            free(value);
+
         }
             break;
 
         case DT_BOOL:
         {
             memcpy(attrData,&(value->v.boolV) ,sizeof(bool));
+            value = NULL;
+            free(value);
+
         }
             break;
 
