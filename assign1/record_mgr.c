@@ -468,7 +468,7 @@ RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
         {
             char *buf;
             int len = schema->typeLength[attrNum];
-            buf = (char *) malloc(len + 1);
+            buf = (char *) malloc(len);
             strncpy(buf, attrData, len);
             (*value)->v.stringV = buf;
             buf = NULL;

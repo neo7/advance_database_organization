@@ -415,6 +415,7 @@ Record *stringToRecordParser(char *data, Schema *schema)
                 MAKE_VALUE(value,DT_INT,intVal);
                 setAttr(record,schema,i,value);
                 free(value);
+                value = NULL;
                 break;
 
             case DT_FLOAT:
@@ -422,6 +423,7 @@ Record *stringToRecordParser(char *data, Schema *schema)
                 MAKE_VALUE(value,DT_FLOAT,floatVal);
                 setAttr(record,schema,i,value);
                 free(value);
+                value = NULL;
                 break;
 
             case DT_BOOL:
@@ -429,12 +431,14 @@ Record *stringToRecordParser(char *data, Schema *schema)
                 MAKE_VALUE(value,DT_BOOL,boolVal);
                 setAttr(record,schema,i,value);
                 free(value);
+                value = NULL;
                 break;
 
             case DT_STRING:
                 MAKE_STRING_VALUE(value,splitEnd);
                 setAttr (record,schema,i,value);
-                freeVal(value);
+                free(value);
+                value = NULL;
                 break;
         }
 
