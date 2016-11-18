@@ -338,16 +338,18 @@ RC
 next (RM_ScanHandle *scan, Record *record)
 {
     RID rid;
-    Expr* condition;
+    //Expr* condition ;
     Value *con_result;
 
     rid = ((RM_ScanMgmt *)scan->mgmtData)->rid;
-    condition = ((RM_ScanMgmt *)scan->mgmtData)->expr;
+    //condition = ((RM_ScanMgmt *)scan->mgmtData)->expr;
 
-    if( condition == NULL ) {
+    if( ((RM_ScanMgmt *)scan->mgmtData)->expr == NULL ) {
         while(rid.page > 0 && rid.page < total_pages) {
             getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
-            record = ((RM_ScanMgmt *)scan->mgmtData)->record;
+            //record = ((RM_ScanMgmt *)scan->mgmtData)->record;
+            record->data = ((RM_ScanMgmt *)scan->mgmtData)->record->data;
+            record->id = ((RM_ScanMgmt *)scan->mgmtData)->record->id;
             ((RM_ScanMgmt*)scan->mgmtData)->rid.page = ((RM_ScanMgmt*)scan->mgmtData)->rid.page +1 ;
             rid.page = ((RM_ScanMgmt *)scan->mgmtData)->rid.page;
             rid.slot = ((RM_ScanMgmt *)scan->mgmtData)->rid.slot;
@@ -356,13 +358,15 @@ next (RM_ScanHandle *scan, Record *record)
         }
     }
     else {
-         while(rid.page > 0 && rid.page < total_pages) {
+         while(rid.page > 0 && rid.page <= total_pages) {
 
             getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
-            evalExpr(((RM_ScanMgmt *)scan->mgmtData)->record, scan->rel->schema, condition, &con_result);
-            if (con_result->dt == DT_BOOL && con_result->v.boolV == true) {
-                record = ((RM_ScanMgmt *)scan->mgmtData)->record;
-
+            evalExpr(((RM_ScanMgmt *)scan->mgmtData)->record, scan->rel->schema, ((RM_ScanMgmt *)scan->mgmtData)->expr, &con_result);
+            if (con_result->dt == DT_BOOL && con_result->v.boolV) {
+                record->data = ((RM_ScanMgmt *)scan->mgmtData)->record->data;
+                record->id = ((RM_ScanMgmt *)scan->mgmtData)->record->id;
+                ((RM_ScanMgmt*)scan->mgmtData)->rid.page = ((RM_ScanMgmt*)scan->mgmtData)->rid.page +1 ;
+        
                 return RC_OK;
             }
             else {
@@ -374,8 +378,8 @@ next (RM_ScanHandle *scan, Record *record)
     }
 
     ((RM_ScanMgmt *)scan->mgmtData)->rid.page = 1;
-
-
+    
+   // condition = NULL;
     return RC_RM_NO_MORE_TUPLES;
 }
 
@@ -384,7 +388,7 @@ closeScan (RM_ScanHandle *scan){
 
     RM_ScanMgmt *scanMgmt = (RM_ScanMgmt *)scan->mgmtData;
     free(scanMgmt->record);
-    free(scanMgmt->expr);
+    //free(scanMgmt->expr);
     free(scanMgmt);
     scanMgmt = NULL;
 
