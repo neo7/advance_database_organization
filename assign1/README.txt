@@ -172,7 +172,7 @@ NAME : setAttr (Record *record, Schema *schema, int attrNum, Value *value)
 
 NAME : getRecordSizeOffset(Schema *schema, int attrNum)
 [1]  Gets a schema and number of attributes.
-[2]  Adds offset as much as the size of data type traversing all schema. 
+[2]  Adds offset as much as the size of data type traversing all schema.
 [3]  Returns offset.
 -------------------------------------------------------------------------------------------------------------
 
@@ -182,6 +182,6 @@ There is a Makefile in this assignment, make use of that to compile and run.
 Step 1: unzip the file.
 Step 2: go in the directory from the commandline.
 Step 3: Make sure you have the standard GCC compiler installed on your system. Fourier server is a nice way to test.
-Step 4: run $ make
+Step 4: run $ make clean; make
 Step 5: run $ ./test_assign3_1 to run the assignment1 test
 ——————————————————————————————————————————————————————————————————————————————————————————————————————————————
