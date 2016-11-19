@@ -13,7 +13,7 @@ int split (char *str, char c, char ***arr)
     int i = 0;
     char *p;
     char *t;
-    
+
     p = str;
     while (*p != '\0')
     {
@@ -21,11 +21,11 @@ int split (char *str, char c, char ***arr)
             count++;
         p++;
     }
-    
+
     *arr = (char**) malloc(sizeof(char*) * count);
     if (*arr == NULL)
         exit(1);
-    
+
     p = str;
     while (*p != '\0')
     {
@@ -34,7 +34,7 @@ int split (char *str, char c, char ***arr)
             (*arr)[i] = (char*) malloc( sizeof(char) * token_len );
             if ((*arr)[i] == NULL)
                 exit(1);
-            
+
             token_len = 0;
             i++;
         }
@@ -44,7 +44,7 @@ int split (char *str, char c, char ***arr)
     (*arr)[i] = (char*) malloc( sizeof(char) * token_len );
     if ((*arr)[i] == NULL)
         exit(1);
-    
+
     i = 0;
     p = str;
     t = ((*arr)[i]);
@@ -63,7 +63,7 @@ int split (char *str, char c, char ***arr)
         }
         p++;
     }
-    
+
     return count;
 }
 
@@ -80,18 +80,18 @@ Schema *stringToSchemaParser(char *data)
     int c = 0, i;
     char **arr = NULL;
     char **attributeArray = NULL;
-    
+
     c = split(data, '<', &arr);
     c = split(arr[1], '>', &attributeArray);
-    
+
     int attrNum = atoi(attributeArray[0]);
     schema->numAttr = attrNum;
     schema->attrNames = (char **) malloc(sizeof(char*)*attrNum);
     schema->dataTypes = (DataType *) malloc(sizeof(DataType)*attrNum);
     schema->typeLength = (int *) malloc(sizeof(int)*attrNum);
-    
-    
-    
+
+
+
     char *attributeStringPointer = strstr(attributeArray[1], "(")+1;
     char * substring = strstr(attributeStringPointer, ")");
     int length = substring - attributeStringPointer;
@@ -103,7 +103,7 @@ Schema *stringToSchemaParser(char *data)
     for (i = 0; i < c; i++)
     {
         splitAttribute = datatypeArray[i];
-        
+
         splitAttribute = strtok(splitAttribute, ": ");
         schema->attrNames[i] = (char *)malloc(sizeof(char));
         schema->attrNames[i] = splitAttribute;
@@ -131,7 +131,7 @@ Schema *stringToSchemaParser(char *data)
             int strLength = atoi(splitAttribute);
             schema->dataTypes[i]= DT_STRING;
             schema->typeLength[i] = strLength;
-            
+
         }
     }
     char * keyAttribute = (char *) malloc(sizeof(char));
@@ -139,10 +139,10 @@ Schema *stringToSchemaParser(char *data)
     keyAttribute = strtok(NULL, ":");
     keyAttribute =strtok(keyAttribute,"(");
     keyAttribute =strtok(NULL,"(");
-    
+
     keyAttribute =strtok(keyAttribute,")");
     keyAttribute = strtok(keyAttribute, ", ");
-    
+
     int keyNum = 0;
     char **keys = (char**) malloc(sizeof(char*)*schema->numAttr);
     while (keyAttribute)
@@ -150,13 +150,13 @@ Schema *stringToSchemaParser(char *data)
         keys[keyNum] = (char*)malloc(sizeof(char*));
         strcpy(keys[keyNum], keyAttribute);
         keyNum++;
-        
+
         keyAttribute = strtok(NULL, ", ");
     }
     free(keyAttribute);
     schema->keyAttrs = (int *)malloc(sizeof(int)* keyNum);
     schema->keySize = keyNum;
-    
+
     int j;
     for (i = 0; i<keyNum; i++)
     {
@@ -172,13 +172,13 @@ Schema *stringToSchemaParser(char *data)
     free(arr);
     free(attributeArray);
     free(datatypeArray);
-    
+
     arr = NULL;
     attributeArray = NULL;
     datatypeArray = NULL;
-    
+
     return schema;
-    
+
 }
 
 
@@ -190,20 +190,20 @@ Record *stringToRecordParser(char *data, Schema *schema)
     int intVal;
     float floatVal;
     bool boolVal;
-    
-    
+
+
     Value *value;
     Record *record = (Record*)malloc(sizeof(Record*));
     record->data = (char*)malloc(sizeof(char*));
-    
+
     char *splitStart, *splitEnd;
-    
+
     splitStart = strtok(data,"(");
-    
+
     for(i=0;i< schema->numAttr;i++)
     {
         splitEnd = strtok(NULL,":");
-        
+
         if(i == lastAttr)
         {
             splitEnd = strtok(NULL,")");
@@ -212,7 +212,7 @@ Record *stringToRecordParser(char *data, Schema *schema)
         {
             splitEnd = strtok(NULL,",");
         }
-        
+
         switch(schema->dataTypes[i])
         {
             case DT_INT:
@@ -221,29 +221,60 @@ Record *stringToRecordParser(char *data, Schema *schema)
                 setAttr(record,schema,i,value);
                 free(value);
                 break;
-                
+
             case DT_FLOAT:
                 floatVal = strtof(splitEnd, NULL);
                 MAKE_VALUE(value,DT_FLOAT,floatVal);
                 setAttr(record,schema,i,value);
                 free(value);
                 break;
-                
+
             case DT_BOOL:
                 boolVal = (splitEnd[0] == 't') ? TRUE: FALSE;
                 MAKE_VALUE(value,DT_BOOL,boolVal);
                 setAttr(record,schema,i,value);
                 free(value);
                 break;
-                
+
             case DT_STRING:
                 MAKE_STRING_VALUE(value,splitEnd);
                 setAttr (record,schema,i,value);
                 freeVal(value);
                 break;
         }
-        
+
     }
-    
+
     return record;
+}
+
+/**
+ * Finds the record size and also finds the offset of a given file as well.
+ * @param schema
+ * @param attrNum
+ * @return
+ */
+int
+getRecordSizeOffset(Schema *schema, int attrNum)
+{
+    int offset = 0;
+    int attrPos = 0;
+
+    for(attrPos = 0; attrPos < attrNum; attrPos++)
+        switch (schema->dataTypes[attrPos])
+        {
+            case DT_STRING:
+                offset += schema->typeLength[attrPos];
+                break;
+            case DT_INT:
+                offset += sizeof(int);
+                break;
+            case DT_FLOAT:
+                offset += sizeof(float);
+                break;
+            case DT_BOOL:
+                offset += sizeof(bool);
+                break;
+        }
+    return offset;
 }

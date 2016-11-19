@@ -1,4 +1,4 @@
-Buffer Manager Assignment
+Recode Manager Assignment
 --------------------------------------------------------------------------------------------------------------------
 
 Group Members:
@@ -23,119 +23,157 @@ dberror.c
 dberror.h
 storage_mgr.c
 storage_mgr.h
+expr.c
+expr.h
+object_parser.c
+object_parser.h
+record_mgr.c
+record_mgr.h
+rm_serializer.c
+Deserialize.c
+tables.h
 test_assign1_1.c
 test_assign1_2.c
-test_assign2_2.c
+test_assign2_1.c
+test_assign3_1.c
+test_expr.c
 test_helper.h
 Note: There is an additional test file for this assignment.
 ------------------------------------------------------------------------------------------------------------------
 
 Changes done in each method:
 ----------------------------
-NAME : 	InitBufferPool (BM_BufferPool *const bm, const char *const pageFileName, const int numPages, ReplacementStrategy strategy, void *stratData)
+NAME : 	createTable (char *name, Schema *schema)
 
-[1]  Takes a BM_BufferPool information as arguments.
-[2]  Throws error if page file name is null or number of pages is less than 0.
-[3]  Creates new status object to store real-time status information.
-[3]  Initializes members of BM_BufferPool.
-[4]  Creates memory space as much as Frame size by number of pages.
-[5]  Initializes all frames with default values.
-[6]  Sets hit, read and write count to 0.
-
-
-NAME : shutdownBufferPool (BM_BufferPool *const bm)
-
-[1]  Takes a BM_BufferPool object.
-[2]  Calls forcdFlushPool to write all of the dirty frames.
-[3]  Iterates all pages in buffer and check whether the pages are being referenced or not.
-[3]  Set isPageInBuffer flag true if number of reference to page is not 0.
-[4]  Throws error if Page is not in buffer
+[1]  Takes a Schema information as arguments.
+[2]  Checks file accessibility then creates a page file and opens the page file.
+[3]  Throws errors according to the results from access, createPageFile and openPageFile.
+[3]  Gets serialized schema.
+[4]  Writes serialized schema into block.
+[5]  Throws error when writeBlock is failed.
 
 
-NAME : forceFlushPool (BM_BufferPool *const bm)
+NAME : openTable (RM_TableData *rel, char *name)
 
-[1]  Takes an object of BM_BufferPool to write all dirty frames.
-[2]  Throws RC_BUFFER_NOTINITIALIZED error when object is empty.
-[3]  Gets status information from buffer object.
-[4]  If page is dirty and not being referenced, write block to page.
-
-
-NAME : makeDirty (BM_BufferPool *const bm, BM_PageHandle *const page)
-
-[1]  Take buffer pool object and a page from BM_BufferPool and BM_PageHandle.
-[2]  Throws RC_BUFFER_NOTINITIALIZED error if management data is empty.
-[3]  If the page is already dirty, throws RC_MARK_DIRTY_ERROR error.
-[4]  Otherwise, makes page dirty.
-[5]  Checks whether finding a page to be dirty was successful or not.
-[6]  If not, throws RC_MARK_DIRTY_ERROR.
+[1]  Takes an object of RM_TableData and file name.
+[2]  Opens a file with file name and create a read pointer to read the file.
+[3]  Makes an object of BM_BufferPool and store into table management data.
+[3]  Initializes buffer pool and makes page pinnded.
+[4]  Set page number into 0.
+[5]  Executes parser to make string (data) to schema and stores parsed data into schema of relation.
 
 
-NAME : unpinPage (BM_BufferPool *const bm, BM_PageHandle *const page)
+NAME : closeTable (RM_TableData *rel)
 
-[1]  Takes a BM_BufferPool object and a page from BM_PageHandle.
-[2]  Throws RC_BUFFER_NOTINITIALIZED error if management data is empty.
-[3]  Iterates buffers and decreases reference count of frames.
-[4]  Makes page to be unpinned from buffer.
-[5]  If unpinning was not successful, throws RC_UNPIN_PAGE_ERROR.
+[1]  Takes an object of RM_TableData and makes page unpinned.
+[2]  Shuts down buffer pool.
+[3]  Returns result code.
 
 
-NAME : forcePage (BM_BufferPool *const bm, BM_PageHandle *const page)
+NAME : deleteTable (char *name)
 
-[1]  Throws RC_BUFFER_NOTINITIALIZED if buffer management data is empty.
-[2]  If number of pages is invalid or page number is bigger than number of pages.
-[3]  Iterates buffer and writes all available block to page by calling 'writeBlockToPage'.
-[4]  Throws error if writing was not successful.
+[1]  Destroys table with table name and return result code.
 
 
-NAME : pinPage (BM_BufferPool *const bm, BM_PageHandle *const page, const PageNumber pageNum)
+NAME : getNumTuples (RM_TableData *rel)
 
-[1]  Gets buffer management data and status data and starts interation.
-[2]  Pin pages into frames in buffer, only if frames are initial state.
-   (Opens page flie, stores page data, reads blocks, store page number,
-    set reference count, last position and read count 1, stores current status and decreases ranking for pages.
-[3]  Otherwise, write block to page when page is dirty. Then, set reference count, last position, hit count into 1 and decreases ranking for page.
-[4]  After iterating buffer pool, makes new frame which will be inserted into buffer.
-[5]  Make new frame ready to be inserted into buffer.
-[6]  Caches new frame into buffer accroding to the desired strategy.
+[1]  Takes a RM_TablData object.
+[2]  Gets record and counts number of tuple.
+[3]  At the same time, increases number of pages of Record ID.
 
 
-NAME : getFameContents (BM_BufferPool *const bm)
+NAME : insertRecord (RM_TableData *rel, Record *record)
 
-[1]  Gets Buffer Pool information.
-[2]  Makes an array to store information of buffer pool.
-[3]  Copy buffer pool content into the array iterating buffer pool.
-[4]  Returns Array of page number.
-
-
-NAME : getDirtyFlags (BM_BufferPool *const bm)
-
-[1]  Returns false if buffer management data is empty.
-[2]  Creates an array to store dirty bits of pages in buffer.
-[3]  Store dirty bit information into array with regards to dirty bit.
-[4]  Returns Array of dirty bits.
+[1]  Creates a temporary record ID and a free page at the end of the temporary page.
+[2]  Stores free page into table management data and record.
+[3]  Execute serializer with record and schema.
+[4]  Pins page with buffer pool, temporary page and number of free page.
+[5]  Initializes the record in page to \0.
+[6]  Writes the serialized record to the page struct.
+[7]  Throws errors if error occurs.
 
 
-NAME : getFixCounts (BM_BufferPool *const bm)
+NAME : deleteRecord (RM_TableData *rel, RID id)
 
-[1]  Takes Buffer Pool information.
-[2]  Creates an array to store number of reference toward pages in buffer.
-[3]  Copy number of being referenced into the array.
-[4]  Returns array of fixed count.
-
-
-NAME : getNumReadIO (BM_BufferPool *const bm)
-
-[1]  Gets status data of buffer pool.
-[2]  Throws RC_BUFFER_NOTINITIALIZED if buffer management data is empty.
-[3]  Otherwise, gets read count from management data and returns number of read count.
+[1]  Create memory space to store tomb stone flagged record.
+[2]  Pins page and concatenates tomb stone flag and data (string) to be deleted.
+[3]  Updates page id then initializes the record in page to \0.
+[4]  Throws errors if error occurs
 
 
-NAME : getNumWriteIO (BM_BufferPool *const bm)
+NAME : updateRecord (RM_TableData *rel, Record *record)
 
-[1]  Gets status data of buffer pool.
-[2]  Throws RC_BUFFER_NOTINITIALIZED if buffer management data is empty.
-[3]  Otherwise, gets write count from management data returns it.
+[1]  Gets relation and record.
+[2]  Serializes record, pin page writes serialized record into page handle.
+[3]  Makes page dirty, unpins page and forces page.
+[4]  Free serialized record and page handle.
 
+
+NAME : getRecord (RM_TableData *rel, RID id, Record *record)
+
+[1]  Pins page and stores data of page handle into temporary data.
+[2]  Sets the record ID and the data read from page file after deserializing it.
+[3]  Throws error when there are no more tuples.
+
+
+NAME : startScan (RM_TableData *rel, RM_ScanHandle *scan, Expr *cond)
+
+[1]  Takes relation, scan handle and condition.
+[2]  Stores above arguments into scan management data.
+
+
+NAME : next (RM_ScanHandle *scan, Record *record)
+
+[1]  Initializes the RID from the scan management data.
+[2]  Initializes condition with expression from scan management data.
+[3]  If condition is NULL then get record without evaluating expression.
+[4]  If condition has expression, then get record and evaluate expression.
+     Stores record when result of condition from evalExpr is true.
+[5]  Set redord ID to 1 and return no more tuples.
+
+
+NAME : closeScan (RM_ScanHandle *scan)
+
+[1]  Gets scan management data.
+[2]  Free attributes of scan management struct.
+
+NAME : getRecordSize (Schema *schema)
+
+[1]  Gets record size by using getRecordSizeOffset.
+[2]  Return record size.
+
+NAME : *createSchema (int numAttr, char **attrNames, DataType *dataTypes, int *typeLength, int keySize, int *keys)
+
+[1]  Creates a schema.
+[2]  Initializes number of attribute, attribute names, data types, length, key size and keys.
+[3]  Return schema.
+
+NAME : freeSchema (Schema *schema)
+
+[1]  Gets a schema.
+[2]  Deallocated the schema.
+
+NAME : freeRecord (Record *record)
+
+[1]  Gets a record.
+[2]  Deallocated the record.
+
+NAME : getAttr (Record *record, Schema *schema, int attrNum, Value **value)
+
+[1]  Gets offset of record and calculate the capacity to add value.
+[2]  Copies the attribute to value according to the data types.
+[3]  Returns unknown data type when the datatype is invalid.
+
+NAME : setAttr (Record *record, Schema *schema, int attrNum, Value *value)
+
+[1]  Gets offset of record and calculate the capacity to store value.
+[2]  Copies the value to attribute according to the data types.
+[3]  Returns unknown data type when the datatype is invalid.
+
+NAME : getRecordSizeOffset(Schema *schema, int attrNum)
+[1]  Gets a schema and number of attributes.
+[2]  Adds offset as much as the size of data type traversing all schema. 
+[3]  Returns offset.
 -------------------------------------------------------------------------------------------------------------
 
 Execution Instructions:
@@ -145,5 +183,5 @@ Step 1: unzip the file.
 Step 2: go in the directory from the commandline.
 Step 3: Make sure you have the standard GCC compiler installed on your system. Fourier server is a nice way to test.
 Step 4: run $ make
-Step 5: run $ ./test_assign2_1 to run the assignment1 test
------------------------------------------------------------------------------------------------------------------
+Step 5: run $ ./test_assign3_1 to run the assignment1 test
+——————————————————————————————————————————————————————————————————————————————————————————————————————————————

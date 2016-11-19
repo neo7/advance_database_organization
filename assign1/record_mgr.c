@@ -8,20 +8,36 @@
 #include "object_parser.h"
 
 
-int schema_size;
 int total_pages;
 
+/**
+ * Initialized the record manager by initializing the storage manager.
+ * @param mgmtData
+ * @return
+ */
 RC
 initRecordManager (void *mgmtData){
     initStorageManager();
     return RC_OK;
 }
 
+/**
+ * Does nothing because implementation logic is moved in close table
+ *
+ * @return
+ */
 RC
 shutdownRecordManager (){
     return 0;
 }
 
+/**
+ * Creates a table of the given name and writes the schema in the page and then writes it on the first page
+ * which is Page 0
+ * @param name
+ * @param schema
+ * @return
+ */
 RC
 createTable (char *name, Schema *schema){
     SM_FileHandle fileHandle;
@@ -40,7 +56,6 @@ createTable (char *name, Schema *schema){
     {
         return RC_FILE_NOT_FOUND;
     }
-    schema_size = 0;
     total_pages = 0;
     serializedSchema = serializeSchema(schema);
 
@@ -57,14 +72,15 @@ createTable (char *name, Schema *schema){
 
 }
 
+/**
+ * Opens a given table for making it accessible to for the crud operations.
+ * @param rel
+ * @param name
+ * @return
+ */
 RC
 openTable (RM_TableData *rel, char *name){
     RM_TableMgmt *tableMgmt = (RM_TableMgmt *) malloc(sizeof(RM_TableMgmt));
-    FILE *filePointer;
-
-    filePointer = fopen(name, "r+");
-    char *readPointer = (char *)calloc(PAGE_SIZE, sizeof(char));
-    fgets(readPointer, PAGE_SIZE, filePointer);
 
 
 
@@ -79,11 +95,15 @@ openTable (RM_TableData *rel, char *name){
     tableMgmt->bm_pageHandle = bm_pageHandle;
     rel->mgmtData = tableMgmt;
 
-    free(readPointer);
     return RC_OK;
 
 }
 
+/**
+ * Close table closes the table.
+ * @param rel
+ * @return
+ */
 RC
 closeTable (RM_TableData *rel){
     unpinPage(((RM_TableMgmt *)rel->mgmtData)->bm_bufferPool, ((RM_TableMgmt *)rel->mgmtData)->bm_pageHandle);
@@ -93,11 +113,21 @@ closeTable (RM_TableData *rel){
     return error_code;
 }
 
+/**
+ * Deletes a given table and calls the method of destroyPageFile from Storage Manager.
+ * @param name
+ * @return
+ */
 RC
 deleteTable (char *name){
     return destroyPageFile(name);
 }
 
+/**
+ * Gets the number of records from the tuples from a given table.
+ * @param rel
+ * @return
+ */
 int
 getNumTuples (RM_TableData *rel){
     int tupleCount = 0;
@@ -126,6 +156,13 @@ getNumTuples (RM_TableData *rel){
 }
 
 // handling records in a table
+
+/**
+ * Inserts the record in the table.
+ * @param rel
+ * @param record
+ * @return
+ */
 RC
 insertRecord (RM_TableData *rel, Record *record){
 
@@ -188,6 +225,12 @@ insertRecord (RM_TableData *rel, Record *record){
     return RC_OK;
 }
 
+/**
+ * Deleting the record from the table.
+ * @param rel
+ * @param id
+ * @return
+ */
 RC
 deleteRecord (RM_TableData *rel, RID id)
 {
@@ -253,6 +296,12 @@ deleteRecord (RM_TableData *rel, RID id)
 
 }
 
+/**
+ * Updating a record in the table
+ * @param rel
+ * @param record
+ * @return
+ */
 RC
 updateRecord (RM_TableData *rel, Record *record)
 {
@@ -282,6 +331,14 @@ updateRecord (RM_TableData *rel, Record *record)
     return RC_OK;
 }
 
+/**
+ * Gets a particular record from the table,
+ * Performs a 1 to 1 mapping of record and returns it.
+ * @param rel
+ * @param id
+ * @param record
+ * @return
+ */
 RC
 getRecord (RM_TableData *rel, RID id, Record *record){
 
@@ -321,6 +378,14 @@ getRecord (RM_TableData *rel, RID id, Record *record){
 }
 
 // scans
+
+/**
+ * Initializes the scan for scanning an element in the Table
+ * @param rel
+ * @param scan
+ * @param cond
+ * @return
+ */
 RC
 startScan (RM_TableData *rel, RM_ScanHandle *scan, Expr *cond){
     RM_ScanMgmt *scanMgmt = (RM_ScanMgmt *)malloc(sizeof(RM_ScanMgmt));
@@ -334,6 +399,12 @@ startScan (RM_TableData *rel, RM_ScanHandle *scan, Expr *cond){
     return RC_OK;
 }
 
+/**
+ * Called by scan method for finding the next element, based on a given condition.
+ * @param scan
+ * @param record
+ * @return
+ */
 RC
 next (RM_ScanHandle *scan, Record *record)
 {
@@ -358,7 +429,7 @@ next (RM_ScanHandle *scan, Record *record)
         }
     }
     else {
-         while(rid.page > 0 && rid.page <= total_pages) {
+        while(rid.page > 0 && rid.page <= total_pages) {
 
             getRecord(scan->rel, rid, ((RM_ScanMgmt *)scan->mgmtData)->record);
             evalExpr(((RM_ScanMgmt *)scan->mgmtData)->record, scan->rel->schema, condition, &con_result);
@@ -366,7 +437,7 @@ next (RM_ScanHandle *scan, Record *record)
                 record->data = ((RM_ScanMgmt *)scan->mgmtData)->record->data;
                 record->id = ((RM_ScanMgmt *)scan->mgmtData)->record->id;
                 ((RM_ScanMgmt*)scan->mgmtData)->rid.page = ((RM_ScanMgmt*)scan->mgmtData)->rid.page +1 ;
-        
+
                 return RC_OK;
             }
             else {
@@ -378,17 +449,21 @@ next (RM_ScanHandle *scan, Record *record)
     }
 
     ((RM_ScanMgmt *)scan->mgmtData)->rid.page = 1;
-    
-   // condition = NULL;
+
+    // condition = NULL;
     return RC_RM_NO_MORE_TUPLES;
 }
 
+/**
+ * Closes the scanning function and frees all the data.
+ * @param scan
+ * @return
+ */
 RC
 closeScan (RM_ScanHandle *scan){
 
     RM_ScanMgmt *scanMgmt = (RM_ScanMgmt *)scan->mgmtData;
     free(scanMgmt->record);
-    //free(scanMgmt->expr);
     free(scanMgmt);
     scanMgmt = NULL;
 
@@ -397,6 +472,11 @@ closeScan (RM_ScanHandle *scan){
 }
 
 // dealing with schemas
+/**
+ * Gets the record size
+ * @param schema
+ * @return
+ */
 int
 getRecordSize (Schema *schema)
 {
@@ -405,6 +485,16 @@ getRecordSize (Schema *schema)
     return recordSize;
 }
 
+/**
+ * Creates the Schema from the given parameters.
+ * @param numAttr
+ * @param attrNames
+ * @param dataTypes
+ * @param typeLength
+ * @param keySize
+ * @param keys
+ * @return
+ */
 Schema
 *createSchema (int numAttr, char **attrNames, DataType *dataTypes, int *typeLength, int keySize, int *keys)
 {
@@ -420,14 +510,15 @@ Schema
 
 }
 
-RC
-freeSchema (Schema *schema)
-{
-    free(schema);
-    return RC_OK;
-}
+
 
 // dealing with records and attribute values
+/**
+ * Creates a record on the basis of a Schema.
+ * @param record
+ * @param schema
+ * @return
+ */
 RC createRecord (Record **record, Schema *schema)
 {
     *record = (Record *) malloc(sizeof(Record));
@@ -438,12 +529,25 @@ RC createRecord (Record **record, Schema *schema)
 
 }
 
+/**
+ * Frees a record on the basis
+ * @param record
+ * @return
+ */
 RC freeRecord (Record *record)
 {
     free(record);
     return RC_OK;
 }
 
+/**
+ * Gets the attribute of a record from the Schema and record.
+ * @param record
+ * @param schema
+ * @param attrNum
+ * @param value
+ * @return
+ */
 RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 {
     int offset = getRecordSizeOffset(schema, attrNum);
@@ -460,7 +564,7 @@ RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
         case DT_INT:
         {
             memcpy(&((*value)->v.intV) ,attrData,sizeof(int));	//get the attribute into value
-            
+
         }
             break;
 
@@ -496,6 +600,14 @@ RC getAttr (Record *record, Schema *schema, int attrNum, Value **value)
 
 }
 
+/**
+ * Sets the attributes in the record using the Value structure
+ * @param record
+ * @param schema
+ * @param attrNum
+ * @param value
+ * @return
+ */
 RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
 {
     char *attrData;
@@ -547,29 +659,4 @@ RC setAttr (Record *record, Schema *schema, int attrNum, Value *value)
             return RC_RM_UNKOWN_DATATYPE;
     }
     return RC_OK;
-}
-
-int
-getRecordSizeOffset(Schema *schema, int attrNum)
-{
-    int offset = 0;
-    int attrPos = 0;
-
-    for(attrPos = 0; attrPos < attrNum; attrPos++)
-        switch (schema->dataTypes[attrPos])
-        {
-            case DT_STRING:
-                offset += schema->typeLength[attrPos];
-                break;
-            case DT_INT:
-                offset += sizeof(int);
-                break;
-            case DT_FLOAT:
-                offset += sizeof(float);
-                break;
-            case DT_BOOL:
-                offset += sizeof(bool);
-                break;
-        }
-    return offset;
 }
